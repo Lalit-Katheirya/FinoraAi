@@ -1,0 +1,11 @@
+import { z } from 'zod';
+
+export const reportPeriodSchema = z.object({
+  query: z.object({
+    period: z.enum(['monthly', 'quarterly', 'annual']).default('monthly'),
+    year: z.coerce.number().int().min(2000).max(2100).optional(),
+    month: z.coerce.number().int().min(1).max(12).optional(),
+    quarter: z.coerce.number().int().min(1).max(4).optional(),
+    format: z.enum(['json', 'csv']).optional(),
+  }),
+});

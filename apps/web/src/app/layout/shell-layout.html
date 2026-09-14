@@ -1,0 +1,117 @@
+<div class="flex min-h-screen">
+  <!-- Desktop sidebar -->
+  <aside
+    class="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-[var(--finora-border)] bg-[var(--finora-surface)]/90 backdrop-blur lg:flex"
+  >
+    <div class="border-b border-[var(--finora-border)] px-5 py-5">
+      <a routerLink="/" class="block">
+        <div class="font-display text-xl font-extrabold tracking-tight text-[var(--finora-primary)]">FINORA AI</div>
+        <div class="finora-muted mt-1 text-xs">Your Money. Your Goals. One AI.</div>
+      </a>
+    </div>
+    <nav class="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+      @for (item of nav; track item.path) {
+        <a
+          [routerLink]="item.path"
+          routerLinkActive="bg-[var(--finora-primary-muted)] text-[var(--finora-primary)]"
+          [routerLinkActiveOptions]="{ exact: item.path === '/' }"
+          class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--finora-text-muted)] transition hover:bg-[var(--finora-surface-2)] hover:text-[var(--finora-text)]"
+        >
+          <span class="w-5 text-center opacity-80">{{ item.icon }}</span>
+          {{ item.label }}
+        </a>
+      }
+    </nav>
+    <div class="border-t border-[var(--finora-border)] p-4">
+      <div class="mb-3 truncate text-sm font-medium">{{ user()?.name }}</div>
+      <div class="flex gap-2">
+        <finora-button variant="secondary" size="sm" className="flex-1" (clicked)="toggleTheme()">
+          {{ isDark() ? 'Light' : 'Dark' }}
+        </finora-button>
+        <finora-button variant="ghost" size="sm" (clicked)="logout()">Logout</finora-button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Mobile drawer -->
+  @if (mobileOpen()) {
+    <div class="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" (click)="mobileOpen.set(false)"></div>
+    <aside
+      class="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-[var(--finora-border)] bg-[var(--finora-surface)] lg:hidden"
+    >
+      <div class="flex items-center justify-between border-b border-[var(--finora-border)] px-4 py-4">
+        <div class="font-display text-lg font-extrabold text-[var(--finora-primary)]">FINORA AI</div>
+        <button type="button" class="p-2" (click)="mobileOpen.set(false)">✕</button>
+      </div>
+      <nav class="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+        @for (item of nav; track item.path) {
+          <a
+            [routerLink]="item.path"
+            routerLinkActive="bg-[var(--finora-primary-muted)] text-[var(--finora-primary)]"
+            [routerLinkActiveOptions]="{ exact: item.path === '/' }"
+            class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium"
+          >
+            <span>{{ item.icon }}</span>
+            {{ item.label }}
+          </a>
+        }
+      </nav>
+    </aside>
+  }
+
+  <div class="flex min-w-0 flex-1 flex-col pb-20 lg:pb-0">
+    <header
+      class="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-[var(--finora-border)] bg-[var(--finora-bg)]/85 px-4 py-3 backdrop-blur lg:px-8"
+    >
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          class="rounded-xl border border-[var(--finora-border)] px-3 py-2 lg:hidden"
+          (click)="mobileOpen.set(true)"
+        >
+          ☰
+        </button>
+        <div>
+          <h1 class="m-0 font-display text-lg font-bold lg:text-xl">{{ pageTitle() }}</h1>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <a routerLink="/ai" class="hidden sm:inline-flex">
+          <finora-button variant="secondary" size="sm">Ask AI</finora-button>
+        </a>
+        <finora-button variant="ghost" size="sm" className="lg:hidden" (clicked)="toggleTheme()">
+          {{ isDark() ? '☀' : '☾' }}
+        </finora-button>
+      </div>
+    </header>
+
+    <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-6 lg:px-8">
+      <router-outlet />
+    </main>
+  </div>
+
+  <!-- Mobile bottom nav -->
+  <nav
+    class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-[var(--finora-border)] bg-[var(--finora-surface)]/95 px-1 py-2 backdrop-blur lg:hidden"
+  >
+    @for (item of nav.slice(0, 4); track item.path) {
+      <a
+        [routerLink]="item.path"
+        routerLinkActive="text-[var(--finora-primary)]"
+        [routerLinkActiveOptions]="{ exact: item.path === '/' }"
+        class="flex flex-col items-center gap-1 rounded-lg px-1 py-1 text-[10px] font-medium text-[var(--finora-text-muted)]"
+      >
+        <span class="text-base">{{ item.icon }}</span>
+        {{ item.label }}
+      </a>
+    }
+    <button
+      type="button"
+      class="flex flex-col items-center gap-1 rounded-lg px-1 py-1 text-[10px] font-medium text-[var(--finora-text-muted)]"
+      (click)="mobileOpen.set(true)"
+    >
+      <span class="text-base">⋯</span>
+      More
+    </button>
+  </nav>
+</div>

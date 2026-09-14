@@ -1,0 +1,31 @@
+{
+  "name": "finora-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Finora AI — Your Money. Your Goals. One AI.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @finora/api\" \"npm run dev -w @finora/web\"",
+    "dev:api": "npm run dev -w @finora/api",
+    "dev:web": "npm run dev -w @finora/web",
+    "build": "npm run build -w @finora/shared && npm run build -w @finora/ai && npm run build -w @finora/api && npm run build -w @finora/web",
+    "build:api": "npm run build -w @finora/shared && npm run build -w @finora/ai && npm run build -w @finora/api",
+    "build:web": "npm run build -w @finora/web",
+    "test": "npm run test -w @finora/api -- --runInBand && npm run test -w @finora/web -- --watch=false --browsers=ChromeHeadless",
+    "test:api": "npm run test -w @finora/api",
+    "test:web": "npm run test -w @finora/web -- --watch=false --browsers=ChromeHeadless",
+    "lint": "npm run lint -w @finora/api && npm run lint -w @finora/web",
+    "seed": "npm run seed -w @finora/api",
+    "typecheck": "npm run typecheck -w @finora/shared && npm run typecheck -w @finora/ai && npm run typecheck -w @finora/api"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.8.2"
+  }
+}

@@ -1,0 +1,13 @@
+:host {
+  display: block;
+}
+
+.user-bubble {
+  background: var(--finora-primary);
+  color: #fff;
+}
+
+.assistant-bubble {
+  background: var(--finora-surface-2);
+  color: var(--finora-text);
+}

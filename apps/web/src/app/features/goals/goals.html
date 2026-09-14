@@ -1,0 +1,127 @@
+<div class="finora-page">
+  <div class="finora-page-header">
+    <div>
+      <h2 class="finora-page-title">Goals</h2>
+      <p class="finora-page-subtitle">Track progress and simulate the monthly contribution you need.</p>
+    </div>
+    <finora-button (clicked)="openCreate()">Add goal</finora-button>
+  </div>
+
+  @if (error()) {
+    <finora-alert tone="danger">{{ error() }}</finora-alert>
+  }
+
+  @if (loading()) {
+    <div class="grid gap-4 lg:grid-cols-2">
+      @for (_ of [1, 2]; track $index) {
+        <finora-skeleton height="180px" />
+      }
+    </div>
+  } @else if (!goals().length) {
+    <finora-card>
+      <finora-empty-state title="No goals yet" description="Set a target and Finora will show required monthly savings." actionLabel="Add goal" [action]="openCreate.bind(this)" />
+    </finora-card>
+  } @else {
+    <div class="grid gap-4 lg:grid-cols-2">
+      @for (g of goals(); track g.id) {
+        <article class="finora-surface p-5">
+          <div class="mb-3 flex items-start justify-between gap-2">
+            <div>
+              <h3 class="m-0 font-display text-lg font-semibold">{{ g.name }}</h3>
+              <p class="finora-muted m-0 mt-1 text-sm">{{ g.category }}</p>
+            </div>
+            <finora-badge [tone]="priorityTone(g.priority)">{{ g.priority }}</finora-badge>
+          </div>
+          <div class="mb-2 flex justify-between text-sm">
+            <finora-currency [amount]="g.currentAmount" className="font-semibold" />
+            <span class="finora-muted">/ <finora-currency [amount]="g.targetAmount" /></span>
+          </div>
+          <div class="finora-progress">
+            <span [style.width.%]="clamped(g)"></span>
+          </div>
+          <p class="finora-muted mt-3 mb-0 text-sm">
+            Required monthly: <strong><finora-currency [amount]="g.requiredMonthly" /></strong>
+            · Suggested: <strong><finora-currency [amount]="g.suggestedMonthly" /></strong>
+          </p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <finora-button size="sm" variant="secondary" (clicked)="openSim(g)">Simulate</finora-button>
+            <finora-button size="sm" variant="ghost" (clicked)="openEdit(g)">Edit</finora-button>
+            <finora-button size="sm" variant="ghost" (clicked)="remove(g)">Delete</finora-button>
+          </div>
+        </article>
+      }
+    </div>
+  }
+
+  @if (simulation(); as sim) {
+    <finora-card title="Contribution simulation" [subtitle]="sim.goal.name">
+      <form class="grid max-w-md gap-3" [formGroup]="simForm">
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium">Monthly contribution</span>
+          <input type="number" class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="monthlyContribution" />
+        </label>
+      </form>
+      <div class="mt-4 grid gap-2 text-sm sm:grid-cols-3">
+        <div class="rounded-xl bg-[var(--finora-surface-2)] p-3">
+          <div class="finora-muted text-xs">Remaining</div>
+          <finora-currency [amount]="sim.remaining" className="font-semibold" />
+        </div>
+        <div class="rounded-xl bg-[var(--finora-surface-2)] p-3">
+          <div class="finora-muted text-xs">Required monthly</div>
+          <finora-currency [amount]="sim.required" className="font-semibold" />
+        </div>
+        <div class="rounded-xl bg-[var(--finora-surface-2)] p-3">
+          <div class="finora-muted text-xs">Months to goal</div>
+          <div class="font-semibold">{{ sim.months ?? '—' }}</div>
+        </div>
+      </div>
+    </finora-card>
+  }
+
+  <finora-modal [open]="modalOpen()" [title]="editing() ? 'Edit goal' : 'Add goal'" (close)="modalOpen.set(false)">
+    <form class="flex flex-col gap-3" [formGroup]="form" (ngSubmit)="save()">
+      <label class="flex flex-col gap-1 text-sm">
+        <span class="font-medium">Name</span>
+        <input class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="name" />
+      </label>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium">Target amount</span>
+          <input type="number" class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="targetAmount" />
+        </label>
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium">Current amount</span>
+          <input type="number" class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="currentAmount" />
+        </label>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium">Target date</span>
+          <input type="date" class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="targetDate" />
+        </label>
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium">Monthly contribution</span>
+          <input type="number" class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="monthlyContribution" />
+        </label>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium">Priority</span>
+          <select class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="priority">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </label>
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium">Category</span>
+          <input class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="category" />
+        </label>
+      </div>
+      <div class="mt-4 flex justify-end gap-2">
+        <finora-button type="button" variant="secondary" (clicked)="modalOpen.set(false)">Cancel</finora-button>
+        <finora-button type="submit" [loading]="saving()">Save</finora-button>
+      </div>
+    </form>
+  </finora-modal>
+</div>

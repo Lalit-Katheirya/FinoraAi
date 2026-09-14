@@ -1,0 +1,93 @@
+<div class="finora-page">
+  <div class="finora-page-header">
+    <div>
+      <h2 class="finora-page-title">Dashboard</h2>
+      <p class="finora-page-subtitle">A clear snapshot of your money this month.</p>
+    </div>
+    <div class="flex gap-2">
+      <a routerLink="/transactions/import"><finora-button variant="secondary">Import</finora-button></a>
+      <a routerLink="/ai"><finora-button>Ask AI</finora-button></a>
+    </div>
+  </div>
+
+  @if (error()) {
+    <finora-alert tone="danger" title="Couldn’t load dashboard">
+      {{ error() }}
+      <div class="mt-2"><finora-button size="sm" variant="secondary" (clicked)="load()">Retry</finora-button></div>
+    </finora-alert>
+  }
+
+  @if (loading()) {
+    <div class="finora-grid-stats">
+      @for (_ of [1, 2, 3, 4, 5, 6]; track $index) {
+        <finora-skeleton height="110px" />
+      }
+    </div>
+  } @else if (data(); as d) {
+    <div class="finora-grid-stats">
+      <finora-stat-card label="Total Balance" [value]="d.totalBalance" [currency]="d.currency" icon="◈" />
+      <finora-stat-card label="Monthly Income" [value]="d.monthlyIncome" [currency]="d.currency" icon="↑" />
+      <finora-stat-card label="Monthly Expenses" [value]="d.monthlyExpenses" [currency]="d.currency" icon="↓" />
+      <finora-stat-card label="Savings" [value]="d.savings" [currency]="d.currency" icon="◎" />
+      <finora-stat-card label="Investments" [value]="d.investments" [currency]="d.currency" icon="↗" />
+      <finora-stat-card label="Upcoming Bills" [value]="d.upcomingBills" [currency]="d.currency" icon="◷" />
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-2">
+      <finora-card title="Income vs Expense" subtitle="Current period comparison">
+        <finora-chart [data]="incomeExpenseChart()" type="bar" />
+      </finora-card>
+      <finora-card title="Expense by Category" subtitle="Where money went">
+        @if (d.chartData.categoryBreakdown.length) {
+          <finora-chart [data]="categoryChart()" type="doughnut" height="280px" />
+        } @else {
+          <finora-empty-state title="No expense categories yet" description="Add transactions to see a breakdown." icon="▦" />
+        }
+      </finora-card>
+    </div>
+
+    <finora-card title="Savings trend" subtitle="Income minus expenses">
+      <finora-chart [data]="trendChart()" type="line" height="220px" />
+    </finora-card>
+
+    <div class="grid gap-4 lg:grid-cols-5">
+      <finora-card className="lg:col-span-3" title="Recent transactions" subtitle="Latest activity">
+        @if (d.recentTransactions.length) {
+          <div class="divide-y divide-[var(--finora-border)]">
+            @for (tx of d.recentTransactions; track tx.id) {
+              <finora-transaction-row [tx]="tx" />
+            }
+          </div>
+          <div class="mt-3">
+            <a routerLink="/transactions" class="text-sm font-semibold text-[var(--finora-primary)]">View all</a>
+          </div>
+        } @else {
+          <finora-empty-state
+            title="No transactions yet"
+            description="Import a statement or add your first transaction."
+            actionLabel="Add transaction"
+            [action]="goTransactions"
+          />
+        }
+      </finora-card>
+
+      <finora-card className="lg:col-span-2" title="AI insights" subtitle="Signals worth your attention">
+        @if (d.insights.length) {
+          <div class="flex flex-col gap-3">
+            @for (insight of d.insights; track insight.id) {
+              <article class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface-2)]/50 p-3">
+                <div class="mb-1 flex items-center justify-between gap-2">
+                  <h4 class="m-0 text-sm font-semibold">{{ insight.title }}</h4>
+                  <finora-badge [tone]="severityTone(insight.severity)">{{ insight.severity }}</finora-badge>
+                </div>
+                <p class="finora-muted m-0 text-sm">{{ insight.message }}</p>
+              </article>
+            }
+          </div>
+        } @else {
+          <finora-empty-state title="No insights yet" description="Finora AI will surface tips as data grows." icon="✦" />
+        }
+      </finora-card>
+    </div>
+  }
+</div>

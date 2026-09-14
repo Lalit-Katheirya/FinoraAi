@@ -1,0 +1,111 @@
+<div class="finora-page">
+  <div class="finora-page-header">
+    <div>
+      <h2 class="finora-page-title">Import transactions</h2>
+      <p class="finora-page-subtitle">Upload CSV (full flow) or PDF (basic upload), map columns, preview, confirm.</p>
+    </div>
+  </div>
+
+  @if (error()) {
+    <finora-alert tone="danger">{{ error() }}</finora-alert>
+  }
+
+  @if (step() === 'upload') {
+    <div class="grid gap-4 md:grid-cols-2">
+      <finora-card title="CSV upload" subtitle="Best for bank statement exports">
+        <label class="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--finora-border)] bg-[var(--finora-surface-2)]/40 px-6 py-10 text-center">
+          <span class="text-2xl">📄</span>
+          <span class="font-medium">Choose CSV file</span>
+          <span class="finora-muted text-xs">Columns will be mapped next</span>
+          <input type="file" accept=".csv,text/csv" class="hidden" (change)="onCsvSelected($event)" />
+        </label>
+      </finora-card>
+      <finora-card title="PDF upload" subtitle="Basic statement upload UI">
+        <label class="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--finora-border)] bg-[var(--finora-surface-2)]/40 px-6 py-10 text-center">
+          <span class="text-2xl">📑</span>
+          <span class="font-medium">Choose PDF file</span>
+          <span class="finora-muted text-xs">Extraction depends on backend support</span>
+          <input type="file" accept="application/pdf,.pdf" class="hidden" (change)="onPdfSelected($event)" />
+        </label>
+      </finora-card>
+    </div>
+  }
+
+  @if (step() === 'map') {
+    <finora-card title="Column mapping" subtitle="Match your file headers to Finora fields">
+      <form class="grid gap-3 sm:grid-cols-2" [formGroup]="mapForm" (ngSubmit)="applyMapping()">
+        <label class="flex flex-col gap-1 text-sm sm:col-span-2">
+          <span class="font-medium">Account</span>
+          <select class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="accountId">
+            @for (a of accounts(); track a.id) {
+              <option [value]="a.id">{{ a.name }}</option>
+            }
+          </select>
+        </label>
+        @for (field of targetFields; track field) {
+          <label class="flex flex-col gap-1 text-sm">
+            <span class="font-medium capitalize">{{ field }}</span>
+            <select class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" [formControlName]="field">
+              <option value="">— skip —</option>
+              @for (h of headers(); track h) {
+                <option [value]="h">{{ h }}</option>
+              }
+            </select>
+          </label>
+        }
+        <div class="flex justify-end gap-2 pt-2 sm:col-span-2">
+          <finora-button type="button" variant="secondary" (clicked)="backToUpload()">Back</finora-button>
+          <finora-button type="submit" [loading]="loading()">Continue to preview</finora-button>
+        </div>
+      </form>
+    </finora-card>
+  }
+
+  @if (step() === 'preview') {
+    <finora-card title="Preview" subtitle="Review rows before confirming">
+      <div class="mb-4 flex flex-wrap gap-2">
+        <finora-badge tone="primary">Batch {{ batch()?.id }}</finora-badge>
+        <finora-badge>{{ previewRows().length }} rows</finora-badge>
+      </div>
+      <div class="overflow-x-auto rounded-xl border border-[var(--finora-border)]">
+        <table class="min-w-full text-sm">
+          <thead class="bg-[var(--finora-surface-2)] text-left">
+            <tr>
+              <th class="px-3 py-2">Date</th>
+              <th class="px-3 py-2">Merchant</th>
+              <th class="px-3 py-2">Type</th>
+              <th class="px-3 py-2 text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of previewRows(); track row.id) {
+              <tr class="border-t border-[var(--finora-border)]">
+                <td class="px-3 py-2">{{ row.date || '—' }}</td>
+                <td class="px-3 py-2">{{ row.merchant || row.description || '—' }}</td>
+                <td class="px-3 py-2">{{ row.type || '—' }}</td>
+                <td class="px-3 py-2 text-right">{{ row.amount ?? '—' }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td class="finora-muted px-3 py-6 text-center" colspan="4">No preview rows yet.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-4 flex justify-end gap-2">
+        <finora-button variant="secondary" (clicked)="reject()">Reject</finora-button>
+        <finora-button [loading]="loading()" (clicked)="confirm()">Confirm import</finora-button>
+      </div>
+    </finora-card>
+  }
+
+  @if (step() === 'done') {
+    <finora-card title="Import complete">
+      <p class="finora-muted m-0">Transactions were approved. You can review them in the transactions list.</p>
+      <div class="mt-4">
+        <a routerLink="/transactions"><finora-button>Go to transactions</finora-button></a>
+      </div>
+    </finora-card>
+  }
+</div>

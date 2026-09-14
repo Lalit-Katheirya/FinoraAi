@@ -1,0 +1,117 @@
+<div class="finora-page">
+  <div class="finora-page-header">
+    <div>
+      <h2 class="finora-page-title">Investments</h2>
+      <p class="finora-page-subtitle">Portfolio value, invested capital, and P/L at a glance.</p>
+    </div>
+    <finora-button (clicked)="openCreate()">Add investment</finora-button>
+  </div>
+
+  @if (error()) {
+    <finora-alert tone="danger">{{ error() }}</finora-alert>
+  }
+
+  @if (loading()) {
+    <div class="finora-grid-stats">
+      @for (_ of [1, 2, 3, 4]; track $index) {
+        <finora-skeleton height="100px" />
+      }
+    </div>
+  } @else {
+    <div class="finora-grid-stats">
+      <finora-stat-card label="Invested" [value]="summary().invested" icon="◎" />
+      <finora-stat-card label="Current value" [value]="summary().current" icon="◈" />
+      <finora-stat-card label="Profit / Loss" [value]="summary().pl" icon="↗" />
+      <article class="finora-surface flex flex-col gap-2 p-4">
+        <p class="finora-muted m-0 text-xs font-medium uppercase tracking-wide">Return</p>
+        <p class="m-0 font-display text-2xl font-bold" [style.color]="summary().pct >= 0 ? 'var(--finora-success)' : 'var(--finora-danger)'">
+          {{ summary().pct | number: '1.1-1' }}%
+        </p>
+      </article>
+    </div>
+
+    @if (!items().length) {
+      <finora-card>
+        <finora-empty-state title="No investments" description="Add mutual funds, stocks, FDs and more." actionLabel="Add investment" [action]="openCreate.bind(this)" />
+      </finora-card>
+    } @else {
+      <div class="finora-surface overflow-hidden">
+        <table class="min-w-full text-sm">
+          <thead class="bg-[var(--finora-surface-2)] text-left text-[var(--finora-text-muted)]">
+            <tr>
+              <th class="px-4 py-3">Name</th>
+              <th class="px-4 py-3">Type</th>
+              <th class="px-4 py-3 text-right">Invested</th>
+              <th class="px-4 py-3 text-right">Current</th>
+              <th class="px-4 py-3 text-right">P/L</th>
+              <th class="px-4 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of items(); track item.id) {
+              <tr class="border-t border-[var(--finora-border)]">
+                <td class="px-4 py-3 font-medium">{{ item.name }}</td>
+                <td class="px-4 py-3"><finora-badge>{{ item.type.replace('_', ' ') }}</finora-badge></td>
+                <td class="px-4 py-3 text-right"><finora-currency [amount]="item.investedAmount" /></td>
+                <td class="px-4 py-3 text-right"><finora-currency [amount]="item.currentValue" /></td>
+                <td class="px-4 py-3 text-right">
+                  <finora-currency [amount]="item.profitLoss" [tone]="item.profitLoss >= 0 ? 'positive' : 'negative'" className="font-semibold" />
+                  <div class="finora-muted text-xs">{{ item.returnPercent | number: '1.1-1' }}%</div>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <finora-button size="sm" variant="ghost" (clicked)="openEdit(item)">Edit</finora-button>
+                  <finora-button size="sm" variant="ghost" (clicked)="remove(item)">Delete</finora-button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  <finora-modal [open]="modalOpen()" [title]="editing() ? 'Edit investment' : 'Add investment'" (close)="modalOpen.set(false)">
+    <form class="flex flex-col gap-3" [formGroup]="form" (ngSubmit)="save()">
+      <label class="flex flex-col gap-1 text-sm">
+        <span class="font-medium">Name</span>
+        <input class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="name" />
+      </label>
+      <label class="flex flex-col gap-1 text-sm">
+        <span class="font-medium">Type</span>
+        <select class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="type">
+          @for (t of types; track t) {
+            <option [value]="t">{{ t }}</option>
+          }
+        </select>
+      </label>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium">Invested</span>
+          <input type="number" class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="investedAmount" />
+        </label>
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium">Current value</span>
+          <input type="number" class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="currentValue" />
+        </label>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium">Units</span>
+          <input type="number" class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="units" />
+        </label>
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium">Purchase date</span>
+          <input type="date" class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="purchaseDate" />
+        </label>
+      </div>
+      <label class="flex flex-col gap-1 text-sm">
+        <span class="font-medium">Notes</span>
+        <textarea rows="2" class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="notes"></textarea>
+      </label>
+      <div class="mt-4 flex justify-end gap-2">
+        <finora-button type="button" variant="secondary" (clicked)="modalOpen.set(false)">Cancel</finora-button>
+        <finora-button type="submit" [loading]="saving()">Save</finora-button>
+      </div>
+    </form>
+  </finora-modal>
+</div>

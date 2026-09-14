@@ -1,0 +1,77 @@
+<div class="finora-page">
+  <div class="finora-page-header">
+    <div>
+      <h2 class="finora-page-title">Reports</h2>
+      <p class="finora-page-subtitle">Period summaries with export for accounting and reviews.</p>
+    </div>
+    <div class="flex gap-2">
+      <finora-button variant="secondary" [loading]="exporting()" (clicked)="exportCsv()">Export CSV</finora-button>
+      <finora-button (clicked)="load()" [loading]="loading()">Refresh</finora-button>
+    </div>
+  </div>
+
+  <finora-card title="Period">
+    <form class="grid gap-3 sm:grid-cols-4" [formGroup]="form" (ngSubmit)="load()">
+      <label class="flex flex-col gap-1 text-sm">
+        <span class="font-medium">Period</span>
+        <select class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="period">
+          <option value="monthly">Monthly</option>
+          <option value="quarterly">Quarterly</option>
+          <option value="annual">Annual</option>
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-sm">
+        <span class="font-medium">Year</span>
+        <input type="number" class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="year" />
+      </label>
+      @if (form.controls.period.value === 'monthly') {
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium">Month</span>
+          <input type="number" min="1" max="12" class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="month" />
+        </label>
+      }
+      @if (form.controls.period.value === 'quarterly') {
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium">Quarter</span>
+          <input type="number" min="1" max="4" class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-2.5" formControlName="quarter" />
+        </label>
+      }
+      <div class="flex items-end">
+        <finora-button type="submit" className="w-full">Apply</finora-button>
+      </div>
+    </form>
+  </finora-card>
+
+  @if (error()) {
+    <finora-alert tone="danger">{{ error() }}</finora-alert>
+  }
+
+  @if (loading()) {
+    <div class="finora-grid-stats">
+      @for (_ of [1, 2, 3]; track $index) {
+        <finora-skeleton height="100px" />
+      }
+    </div>
+  } @else if (report(); as r) {
+    <div class="finora-grid-stats">
+      <finora-stat-card label="Total income" [value]="r.totalIncome" [currency]="r.currency" />
+      <finora-stat-card label="Total expenses" [value]="r.totalExpenses" [currency]="r.currency" />
+      <finora-stat-card label="Net savings" [value]="r.netSavings" [currency]="r.currency" />
+    </div>
+
+    <finora-card title="By category" [subtitle]="r.period">
+      @if (r.byCategory?.length) {
+        <div class="divide-y divide-[var(--finora-border)]">
+          @for (row of r.byCategory; track row.category) {
+            <div class="flex items-center justify-between py-3 text-sm">
+              <span>{{ row.category }}</span>
+              <finora-currency [amount]="row.amount" [currency]="r.currency" className="font-semibold" />
+            </div>
+          }
+        </div>
+      } @else {
+        <finora-empty-state title="No category data" description="Try another period." />
+      }
+    </finora-card>
+  }
+</div>

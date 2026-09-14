@@ -1,0 +1,121 @@
+<div class="finora-page h-full">
+  <div class="finora-page-header">
+    <div>
+      <h2 class="finora-page-title">AI Assistant</h2>
+      <p class="finora-page-subtitle">ChatGPT-style guidance grounded in your Finora data.</p>
+    </div>
+  </div>
+
+  <div class="grid gap-4 lg:grid-cols-[1fr_280px]">
+    <section class="finora-surface flex min-h-[70vh] flex-col overflow-hidden">
+      <div #scrollBox class="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
+        @for (msg of messages(); track msg.id) {
+          <div class="flex" [class.justify-end]="msg.role === 'user'">
+            <div class="max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed" [ngClass]="msg.role === 'user' ? 'user-bubble' : 'assistant-bubble'">
+              <p class="m-0 whitespace-pre-wrap">{{ msg.content }}</p>
+
+              @if (msg.structured?.numbers?.length) {
+                <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                  @for (n of msg.structured!.numbers!; track n.label) {
+                    <div class="rounded-xl bg-black/5 px-3 py-2 dark:bg-white/5">
+                      <div class="text-xs opacity-70">{{ n.label }}</div>
+                      <finora-currency [amount]="n.value" [currency]="n.currency || 'INR'" className="font-semibold" />
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (msg.structured?.tables?.length) {
+                @for (table of msg.structured!.tables!; track table.title) {
+                  <div class="mt-3 overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
+                    <div class="px-3 py-2 text-xs font-semibold opacity-80">{{ table.title }}</div>
+                    <table class="min-w-full text-xs">
+                      <thead>
+                        <tr>
+                          @for (h of table.headers; track h) {
+                            <th class="px-3 py-1.5 text-left font-semibold">{{ h }}</th>
+                          }
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (row of table.rows; track $index) {
+                          <tr class="border-t border-black/10 dark:border-white/10">
+                            @for (cell of row; track $index) {
+                              <td class="px-3 py-1.5">{{ cell }}</td>
+                            }
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              }
+
+              @if (msg.structured?.recommendations?.length) {
+                <ul class="mt-3 list-disc space-y-1 pl-4">
+                  @for (rec of msg.structured!.recommendations!; track rec) {
+                    <li>{{ rec }}</li>
+                  }
+                </ul>
+              }
+
+              @if (msg.structured?.warnings?.length) {
+                <div class="mt-3 space-y-1">
+                  @for (w of msg.structured!.warnings!; track w) {
+                    <div class="rounded-lg bg-amber-500/15 px-2 py-1 text-xs">{{ w }}</div>
+                  }
+                </div>
+              }
+
+              @if (msg.structured?.disclaimer) {
+                <p class="mt-3 mb-0 text-[11px] opacity-70">{{ msg.structured!.disclaimer }}</p>
+              }
+            </div>
+          </div>
+        }
+
+        @if (loading()) {
+          <div class="finora-muted text-sm">Finora is thinking…</div>
+        }
+      </div>
+
+      @if (error()) {
+        <div class="px-4 pb-2"><finora-alert tone="danger">{{ error() }}</finora-alert></div>
+      }
+
+      <form class="border-t border-[var(--finora-border)] p-4" [formGroup]="form" (ngSubmit)="send()">
+        <div class="flex gap-2">
+          <input
+            class="flex-1 rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-3 outline-none focus:border-[var(--finora-primary)]"
+            formControlName="message"
+            placeholder="Ask about cashflow, budgets, goals…"
+            autocomplete="off"
+          />
+          <finora-button type="submit" [loading]="loading()">Send</finora-button>
+        </div>
+        <p class="finora-muted mt-2 mb-0 text-[11px]">
+          Disclaimer: Finora AI provides informational guidance only — not financial, tax, or investment advice.
+        </p>
+      </form>
+    </section>
+
+    <aside class="flex flex-col gap-3">
+      <finora-card title="Suggested prompts">
+        <div class="flex flex-col gap-2">
+          @for (p of prompts; track p) {
+            <button
+              type="button"
+              class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface-2)]/50 px-3 py-2 text-left text-sm transition hover:border-[var(--finora-primary)]"
+              (click)="usePrompt(p)"
+            >
+              {{ p }}
+            </button>
+          }
+        </div>
+      </finora-card>
+      <finora-alert tone="info" title="Privacy">
+        Messages are processed to answer with your account context. Avoid sharing sensitive credentials.
+      </finora-alert>
+    </aside>
+  </div>
+</div>
