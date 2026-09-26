@@ -81,7 +81,7 @@ export interface CashFlowForecast {
 
 /**
  * Injected data accessors for the finance agent.
- * Implementations live in apps/api — this package never talks to the DB directly.
+ * Implementations live in apps/backend — this package never talks to the DB directly.
  */
 export interface FinanceToolContext {
   userId: string;

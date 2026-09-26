@@ -15,28 +15,36 @@ export class MockLLMProvider implements LLMProvider {
 
   async chat(messages: LLMMessage[], _options?: LLMChatOptions): Promise<string> {
     const joined = messages.map((m) => m.content).join('\n');
+    const userMessage = extractUserMessage(joined);
 
     if (/Permission check FAILED|cannot execute|action_request/i.test(joined)) {
       return JSON.stringify(actionDeniedResponse());
     }
 
+    if (isGreetingMessage(userMessage)) {
+      return JSON.stringify(greetingResponse());
+    }
+
     const toolJson = extractToolResultsJson(joined);
-    if (!toolJson) {
-      return JSON.stringify(insufficient());
+    let parsed: unknown = null;
+    if (toolJson) {
+      try {
+        parsed = JSON.parse(toolJson);
+      } catch {
+        parsed = null;
+      }
     }
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(toolJson);
-    } catch {
-      return JSON.stringify(insufficient());
+    if (parsed && hasUsableToolData(parsed)) {
+      return JSON.stringify(buildFromToolResults(parsed));
     }
 
-    if (!hasUsableToolData(parsed)) {
-      return JSON.stringify(insufficient());
+    const knowledge = knowledgeFallback(joined, userMessage);
+    if (knowledge) {
+      return JSON.stringify(knowledge);
     }
 
-    return JSON.stringify(buildFromToolResults(parsed));
+    return JSON.stringify(insufficient());
   }
 }
 
@@ -226,6 +234,90 @@ function actionDeniedResponse(): StructuredLLMPayload {
     disclaimer: FINANCIAL_INFO_DISCLAIMER,
     insufficientData: false,
   };
+}
+
+function greetingResponse(): StructuredLLMPayload {
+  return {
+    text: "Hi — I'm Finora AI, your personal CA-style finance manager. Ask about spending, budgets, goals, India tax (80C, ITR, LTCG), stock-market basics, or your Finora accounts.",
+    recommendations: [
+      'Try: “Explain 80C deductions”',
+      'Try: “What is my budget status?”',
+      'Try: “How does SIP work?”',
+    ],
+    disclaimer: FINANCIAL_INFO_DISCLAIMER,
+    insufficientData: false,
+  };
+}
+
+function knowledgeFallback(
+  prompt: string,
+  userMessage: string
+): StructuredLLMPayload | null {
+  const intent = /Detected intent:\s*(\w+)/i.exec(prompt)?.[1] ?? '';
+  const lower = `${intent} ${userMessage}`.toLowerCase();
+
+  if (/tax_guidance|\btax\b|80c|itr|ltcg|stcg|gst|tds/.test(lower)) {
+    return {
+      text: 'As a CA-style guide (educational): India personal tax planning usually covers residency, income heads, slab/regime choice, deductions like 80C/80D, TDS credits, and capital-gains treatment (STCG/LTCG). Exact slabs and limits change by financial year — verify with the latest Income Tax rules or a licensed CA before filing.',
+      recommendations: [
+        'Share your FY and whether you want old vs new regime comparison.',
+        'Ask about a specific section (80C, 80D, LTCG, Form 16).',
+      ],
+      disclaimer: FINANCIAL_INFO_DISCLAIMER,
+      insufficientData: false,
+    };
+  }
+
+  if (/market_guidance|stock market|nifty|sensex|sip|mutual[\s-]?fund|equity/.test(lower)) {
+    return {
+      text: 'Market literacy note: SIPs and mutual funds are ways to invest systematically; equity returns are not guaranteed and can be volatile. Diversification, time horizon, and emergency funds matter more than short-term market moves. This is education — not a buy/sell recommendation.',
+      recommendations: [
+        'Ask about SIP vs lump sum conceptually.',
+        'Ask how to review allocation risk without guaranteeing returns.',
+      ],
+      disclaimer: FINANCIAL_INFO_DISCLAIMER,
+      insufficientData: false,
+    };
+  }
+
+  if (/ca_planning|chartered accountant|\bca\b|financial plan|wealth plan/.test(lower)) {
+    return {
+      text: 'CA-style planning checklist: (1) cash-flow and emergency buffer, (2) tax regime and deduction map, (3) goal funding (EMI vs SIP), (4) insurance gaps, (5) investment risk fit. Import your Finora transactions for personalized numbers; otherwise this stays educational.',
+      recommendations: [
+        'Add accounts/transactions for a personalized health check.',
+        'Ask a focused question (tax, goals, or cash flow).',
+      ],
+      disclaimer: FINANCIAL_INFO_DISCLAIMER,
+      insufficientData: false,
+    };
+  }
+
+  if (/general_question/.test(intent) && userMessage.length > 0) {
+    return {
+      text: "I'm your Finora CA-style assistant. I can explain India tax and market concepts, or analyze your Finora balances, budgets, and goals when data is available. What would you like to cover?",
+      recommendations: [
+        'Ask a tax or market concept question.',
+        'Ask for spending, budget, or goal status from your data.',
+      ],
+      disclaimer: FINANCIAL_INFO_DISCLAIMER,
+      insufficientData: false,
+    };
+  }
+
+  return null;
+}
+
+function extractUserMessage(prompt: string): string {
+  const match = /User message:\s*"([^"]*)"/i.exec(prompt);
+  return match?.[1]?.trim() ?? '';
+}
+
+export function isGreetingMessage(message: string): boolean {
+  const trimmed = message.trim();
+  if (!trimmed) return false;
+  return /^(hi|hii+|hello|hey|yo|namaste|good\s*(morning|afternoon|evening)|thanks|thank you|thx)([\s!,.?]|$)/i.test(
+    trimmed
+  ) && trimmed.length <= 40;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

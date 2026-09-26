@@ -3,8 +3,8 @@ import { MockLLMProvider } from './mock.provider';
 import { OpenAILLMProvider } from './openai.provider';
 
 export type { LLMProvider, LLMProviderConfig, LLMMessage, LLMChatOptions, LLMRole, LLMProviderKind, StructuredLLMPayload } from './types';
-export { MockLLMProvider } from './mock.provider';
-export { OpenAILLMProvider } from './openai.provider';
+export { MockLLMProvider, isGreetingMessage } from './mock.provider';
+export { OpenAILLMProvider, isRecoverableLlmError } from './openai.provider';
 
 /**
  * Factory: uses Mock when provider=mock or when no API key is available.

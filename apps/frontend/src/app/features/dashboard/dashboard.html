@@ -1,0 +1,206 @@
+<div class="finora-page">
+  <div class="finora-page-header">
+    <div>
+      <div class="mb-1 flex flex-wrap items-center gap-2">
+        <h2 class="finora-page-title">Dashboard</h2>
+        <finora-badge tone="primary">This month</finora-badge>
+      </div>
+      <p class="finora-page-subtitle">
+        Professional overview of balances, cash flow, and spending — switch any chart to the form you prefer.
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a routerLink="/transactions/import"><finora-button variant="secondary">Import</finora-button></a>
+      <a routerLink="/reports"><finora-button variant="secondary">Reports</finora-button></a>
+      <a routerLink="/ai"><finora-button>Ask AI</finora-button></a>
+    </div>
+  </div>
+
+  @if (error()) {
+    <finora-alert tone="danger" title="Couldn’t load dashboard">
+      {{ error() }}
+      <div class="mt-2">
+        <finora-button size="sm" variant="secondary" (clicked)="load()">Retry</finora-button>
+      </div>
+    </finora-alert>
+  }
+
+  @if (loading()) {
+    <div class="finora-grid-stats">
+      @for (_ of [1, 2, 3, 4, 5, 6]; track $index) {
+        <finora-skeleton height="110px" />
+      }
+    </div>
+    <div class="grid gap-4 lg:grid-cols-2">
+      <finora-skeleton height="320px" />
+      <finora-skeleton height="320px" />
+    </div>
+  } @else if (data(); as d) {
+    <div class="finora-grid-stats">
+      <finora-stat-card label="Total Balance" [value]="d.totalBalance" [currency]="d.currency" icon="◈" />
+      <finora-stat-card
+        label="Monthly Income"
+        [value]="d.monthlyIncome"
+        [currency]="d.currency"
+        icon="↑"
+        [hint]="expenseRatio() !== null ? 'Expense ratio ' + expenseRatio() + '%' : ''"
+      />
+      <finora-stat-card label="Monthly Expenses" [value]="d.monthlyExpenses" [currency]="d.currency" icon="↓" />
+      <finora-stat-card
+        label="Savings"
+        [value]="d.savings"
+        [currency]="d.currency"
+        icon="◎"
+        [hint]="savingsRate() !== null ? 'Savings rate ' + savingsRate() + '%' : ''"
+      />
+      <finora-stat-card label="Investments" [value]="d.investments" [currency]="d.currency" icon="↗" />
+      <finora-stat-card label="Upcoming Bills" [value]="d.upcomingBills" [currency]="d.currency" icon="◷" />
+    </div>
+
+    @if (savingsRate() !== null || expenseRatio() !== null) {
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="finora-surface flex items-center justify-between gap-3 p-4">
+          <div>
+            <p class="finora-muted m-0 text-xs font-medium uppercase tracking-wide">Savings rate</p>
+            <p class="m-0 mt-1 font-display text-xl font-bold tabular-nums">
+              {{ savingsRate() !== null ? (savingsRate() | number: '1.0-1') + '%' : '—' }}
+            </p>
+          </div>
+          <finora-badge [tone]="(savingsRate() ?? 0) >= 20 ? 'success' : (savingsRate() ?? 0) >= 10 ? 'warning' : 'danger'">
+            {{ (savingsRate() ?? 0) >= 20 ? 'Healthy' : (savingsRate() ?? 0) >= 10 ? 'Fair' : 'Low' }}
+          </finora-badge>
+        </div>
+        <div class="finora-surface flex items-center justify-between gap-3 p-4">
+          <div>
+            <p class="finora-muted m-0 text-xs font-medium uppercase tracking-wide">Expense ratio</p>
+            <p class="m-0 mt-1 font-display text-xl font-bold tabular-nums">
+              {{ expenseRatio() !== null ? (expenseRatio() | number: '1.0-1') + '%' : '—' }}
+            </p>
+          </div>
+          <finora-badge tone="info">of income</finora-badge>
+        </div>
+        <div class="finora-surface flex items-center justify-between gap-3 p-4">
+          <div>
+            <p class="finora-muted m-0 text-xs font-medium uppercase tracking-wide">Net this month</p>
+            <p class="m-0 mt-1 font-display text-xl font-bold tabular-nums text-[var(--finora-primary)]">
+              {{ d.savings >= 0 ? '+' : '' }}{{ d.savings | number: '1.0-0' }}
+              <span class="text-sm font-medium text-[var(--finora-text-muted)]">{{ d.currency }}</span>
+            </p>
+          </div>
+          <finora-badge tone="primary">Cash flow</finora-badge>
+        </div>
+      </div>
+    }
+
+    <div class="grid gap-4 lg:grid-cols-2">
+      <finora-card title="Income vs Expense" subtitle="Compare cash in and out — switch chart form anytime">
+        <div cardActions class="inline-flex rounded-lg border border-[var(--finora-border)] bg-[var(--finora-surface-2)] p-0.5">
+          @for (form of flowForms; track form.id) {
+            <button
+              type="button"
+              class="rounded-md px-2.5 py-1 text-xs font-semibold transition"
+              [style.background]="flowChartType() === form.id ? 'var(--finora-primary)' : 'transparent'"
+              [style.color]="flowChartType() === form.id ? 'var(--finora-on-primary)' : 'var(--finora-text-muted)'"
+              (click)="setFlowType(form.id)"
+            >
+              {{ form.label }}
+            </button>
+          }
+        </div>
+        @if (d.chartData.incomeVsExpense.length) {
+          @for (type of [flowChartType()]; track type) {
+            <finora-chart [data]="flowChart()" [type]="type" height="300px" />
+          }
+        } @else {
+          <finora-empty-state title="No cash-flow data yet" description="Add income and expenses to unlock this chart." icon="▥" />
+        }
+      </finora-card>
+
+      <finora-card title="Expense by Category" subtitle="See where money went — pick any visualization">
+        <div cardActions class="inline-flex rounded-lg border border-[var(--finora-border)] bg-[var(--finora-surface-2)] p-0.5">
+          @for (form of categoryForms; track form.id) {
+            <button
+              type="button"
+              class="rounded-md px-2.5 py-1 text-xs font-semibold transition"
+              [style.background]="categoryChartType() === form.id ? 'var(--finora-primary)' : 'transparent'"
+              [style.color]="categoryChartType() === form.id ? 'var(--finora-on-primary)' : 'var(--finora-text-muted)'"
+              (click)="setCategoryType(form.id)"
+            >
+              {{ form.label }}
+            </button>
+          }
+        </div>
+        @if (d.chartData.categoryBreakdown.length) {
+          @for (type of [categoryChartType()]; track type) {
+            <finora-chart [data]="categoryChart()" [type]="type" height="300px" />
+          }
+        } @else {
+          <finora-empty-state title="No expense categories yet" description="Add transactions to see a breakdown." icon="▦" />
+        }
+      </finora-card>
+    </div>
+
+    <finora-card title="Savings trend" subtitle="Net savings over time — line, bar, or donut summary">
+      <div cardActions class="inline-flex rounded-lg border border-[var(--finora-border)] bg-[var(--finora-surface-2)] p-0.5">
+        @for (form of trendForms; track form.id) {
+          <button
+            type="button"
+            class="rounded-md px-2.5 py-1 text-xs font-semibold transition"
+            [style.background]="trendChartType() === form.id ? 'var(--finora-primary)' : 'transparent'"
+            [style.color]="trendChartType() === form.id ? 'var(--finora-on-primary)' : 'var(--finora-text-muted)'"
+            (click)="setTrendType(form.id)"
+          >
+            {{ form.label }}
+          </button>
+        }
+      </div>
+      @if (d.chartData.incomeVsExpense.length) {
+        @for (type of [trendChartType()]; track type) {
+          <finora-chart [data]="trendChart()" [type]="type" height="240px" />
+        }
+      } @else {
+        <finora-empty-state title="No trend yet" description="Savings trend appears after a few periods of data." icon="↗" />
+      }
+    </finora-card>
+
+    <div class="grid gap-4 lg:grid-cols-5">
+      <finora-card className="lg:col-span-3" title="Recent transactions" subtitle="Latest activity across accounts">
+        @if (d.recentTransactions.length) {
+          <div class="divide-y divide-[var(--finora-border)]">
+            @for (tx of d.recentTransactions; track tx.id) {
+              <finora-transaction-row [tx]="tx" />
+            }
+          </div>
+          <div class="mt-4">
+            <a routerLink="/transactions" class="text-sm font-semibold text-[var(--finora-primary)]">View all transactions</a>
+          </div>
+        } @else {
+          <finora-empty-state
+            title="No transactions yet"
+            description="Import a statement or add your first transaction."
+            actionLabel="Add transaction"
+            [action]="goTransactions"
+          />
+        }
+      </finora-card>
+
+      <finora-card className="lg:col-span-2" title="AI insights" subtitle="Signals worth your attention">
+        @if (d.insights.length) {
+          <div class="flex flex-col gap-3">
+            @for (insight of d.insights; track insight.id) {
+              <article class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface-2)]/50 p-3">
+                <div class="mb-1 flex items-center justify-between gap-2">
+                  <h4 class="m-0 text-sm font-semibold">{{ insight.title }}</h4>
+                  <finora-badge [tone]="severityTone(insight.severity)">{{ insight.severity }}</finora-badge>
+                </div>
+                <p class="finora-muted m-0 text-sm">{{ insight.message }}</p>
+              </article>
+            }
+          </div>
+        } @else {
+          <finora-empty-state title="No insights yet" description="Finora AI will surface tips as data grows." icon="✦" />
+        }
+      </finora-card>
+    </div>
+  }
+</div>

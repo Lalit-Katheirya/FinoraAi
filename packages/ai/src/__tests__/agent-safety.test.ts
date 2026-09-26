@@ -111,4 +111,14 @@ describe('agent safety — hallucination prevention', () => {
     const response = await service.ask('What is my budget status?', emptyContext());
     expect(response.text).toContain(AI_INSUFFICIENT_DATA_MESSAGE);
   });
+
+  it('answers greetings instantly without needing finance data', async () => {
+    const result = await runFinanceChat(
+      { message: 'hi' },
+      emptyContext(),
+      { llm }
+    );
+    expect(result.response.text.toLowerCase()).toMatch(/finora|ca-style|finance/);
+    expect(result.response.text).not.toContain(AI_INSUFFICIENT_DATA_MESSAGE);
+  });
 });

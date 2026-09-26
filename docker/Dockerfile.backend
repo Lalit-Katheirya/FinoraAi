@@ -1,0 +1,53 @@
+# syntax=docker/dockerfile:1
+# Build context must be the monorepo root (see docker-compose.yml).
+
+# ── Build shared packages + backend ──────────────────────────────────────────
+FROM node:20-bookworm-slim AS builder
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+COPY apps/backend/package.json ./apps/backend/
+COPY apps/frontend/package.json ./apps/frontend/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/ai/package.json ./packages/ai/
+
+RUN npm ci
+
+COPY packages/shared ./packages/shared
+COPY packages/ai ./packages/ai
+COPY apps/backend ./apps/backend
+
+RUN npm run build -w @finora/shared \
+ && npm run build -w @finora/ai \
+ && npm run build -w @finora/backend
+
+# ── Production runtime ───────────────────────────────────────────────────────
+FROM node:20-bookworm-slim AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=4000
+
+RUN groupadd --system --gid 1001 finora \
+ && useradd --system --uid 1001 --gid finora finora
+
+COPY package.json package-lock.json ./
+COPY apps/backend/package.json ./apps/backend/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/ai/package.json ./packages/ai/
+
+RUN npm ci --omit=dev --workspace=@finora/backend --include-workspace-root \
+ && npm cache clean --force
+
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/packages/ai/dist ./packages/ai/dist
+COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
+
+USER finora
+EXPOSE 4000
+WORKDIR /app/apps/backend
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+CMD ["node", "dist/server.js"]

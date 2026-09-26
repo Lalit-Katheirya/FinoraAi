@@ -31,7 +31,7 @@ export {
 export type { FinanceIntent, IntentDetectionResult } from './schemas/intent.schema';
 
 export { SAFETY_SYSTEM_RULES, buildSystemPrompt } from './prompts/system';
-export { buildFinancePrompt, INTENT_PROMPT_HINTS } from './prompts/finance';
+export { buildFinancePrompt, INTENT_PROMPT_HINTS, isKnowledgeIntent } from './prompts/finance';
 
 export type {
   FinanceToolContext,

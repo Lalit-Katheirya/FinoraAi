@@ -132,15 +132,52 @@ const INTENT_TOOL_MAP: Record<FinanceIntent, FinanceToolName[]> = {
   category_spending: ['getCategorySpending'],
   transactions_lookup: ['getTransactions'],
   financial_overview: ['generateFinancialSummary', 'getBudgetStatus', 'getGoals'],
-  general_question: ['generateFinancialSummary'],
+  // Knowledge intents default to no tools; personalization is opt-in via message cues.
+  tax_guidance: [],
+  market_guidance: [],
+  ca_planning: [],
+  general_question: [],
   action_request: [],
 };
 
+const PERSONALIZATION_TOOLS: Record<
+  'tax_guidance' | 'market_guidance' | 'ca_planning' | 'general_question',
+  FinanceToolName[]
+> = {
+  tax_guidance: ['generateFinancialSummary', 'calculateSavingsRate'],
+  market_guidance: ['getInvestmentSummary'],
+  ca_planning: [
+    'generateFinancialSummary',
+    'getGoals',
+    'getBudgetStatus',
+    'calculateSavingsRate',
+  ],
+  general_question: ['generateFinancialSummary', 'getAccountBalances'],
+};
+
+export function wantsPersonalFinanceContext(message: string): boolean {
+  return /\b(my|mine|our|i have|based on my|from my|in finora|my account|my spend|my budget|my goal|my portfolio|my tax|for me)\b/i.test(
+    message
+  );
+}
+
 export function selectToolsForIntent(
   intent: FinanceIntent,
-  entities: { goalId?: string; months?: number } = {}
+  entities: { goalId?: string; months?: number; message?: string } = {}
 ): ToolCallRequest[] {
-  const names = INTENT_TOOL_MAP[intent] ?? ['generateFinancialSummary'];
+  let names = INTENT_TOOL_MAP[intent] ?? ['generateFinancialSummary'];
+
+  if (
+    entities.message &&
+    (intent === 'tax_guidance' ||
+      intent === 'market_guidance' ||
+      intent === 'ca_planning' ||
+      intent === 'general_question') &&
+    wantsPersonalFinanceContext(entities.message)
+  ) {
+    names = PERSONALIZATION_TOOLS[intent];
+  }
+
   return names.map((name) => {
     const args: Record<string, unknown> = {};
     if (name === 'calculateGoalContribution' && entities.goalId) {

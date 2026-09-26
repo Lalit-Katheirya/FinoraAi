@@ -19,7 +19,7 @@ export interface FinanceAgentServiceOptions {
 }
 
 /**
- * High-level API consumed by apps/api controllers/services.
+ * High-level API consumed by apps/backend controllers/services.
  * Wire a FinanceToolContext that calls your repositories — never pass DB clients here.
  */
 export class FinanceAgentService {

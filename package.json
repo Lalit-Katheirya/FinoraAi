@@ -8,18 +8,22 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @finora/api\" \"npm run dev -w @finora/web\"",
-    "dev:api": "npm run dev -w @finora/api",
-    "dev:web": "npm run dev -w @finora/web",
-    "build": "npm run build -w @finora/shared && npm run build -w @finora/ai && npm run build -w @finora/api && npm run build -w @finora/web",
-    "build:api": "npm run build -w @finora/shared && npm run build -w @finora/ai && npm run build -w @finora/api",
-    "build:web": "npm run build -w @finora/web",
-    "test": "npm run test -w @finora/api -- --runInBand && npm run test -w @finora/web -- --watch=false --browsers=ChromeHeadless",
-    "test:api": "npm run test -w @finora/api",
-    "test:web": "npm run test -w @finora/web -- --watch=false --browsers=ChromeHeadless",
-    "lint": "npm run lint -w @finora/api && npm run lint -w @finora/web",
-    "seed": "npm run seed -w @finora/api",
-    "typecheck": "npm run typecheck -w @finora/shared && npm run typecheck -w @finora/ai && npm run typecheck -w @finora/api"
+    "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev -w @finora/backend\" \"npm run dev -w @finora/frontend\"",
+    "dev:backend": "npm run dev -w @finora/backend",
+    "dev:frontend": "npm run dev -w @finora/frontend",
+    "build": "npm run build -w @finora/shared && npm run build -w @finora/ai && npm run build -w @finora/backend && npm run build -w @finora/frontend",
+    "build:backend": "npm run build -w @finora/shared && npm run build -w @finora/ai && npm run build -w @finora/backend",
+    "build:frontend": "npm run build -w @finora/frontend -- --configuration=production",
+    "start:backend": "npm run start -w @finora/backend",
+    "test": "npm run test -w @finora/backend -- --runInBand && npm run test -w @finora/frontend -- --watch=false --browsers=ChromeHeadless",
+    "test:backend": "npm run test -w @finora/backend",
+    "test:frontend": "npm run test -w @finora/frontend -- --watch=false --browsers=ChromeHeadless",
+    "lint": "npm run lint -w @finora/backend && npm run lint -w @finora/frontend",
+    "seed": "npm run seed -w @finora/backend",
+    "typecheck": "npm run typecheck -w @finora/shared && npm run typecheck -w @finora/ai && npm run typecheck -w @finora/backend",
+    "docker:up": "docker compose -f docker/docker-compose.yml up --build -d",
+    "docker:down": "docker compose -f docker/docker-compose.yml down",
+    "docker:logs": "docker compose -f docker/docker-compose.yml logs -f --tail=100"
   },
   "engines": {
     "node": ">=20"

@@ -4,7 +4,7 @@ export const AI_INSUFFICIENT_DATA_MESSAGE =
   "I don't have enough data to answer that accurately.";
 
 export const FINANCIAL_INFO_DISCLAIMER =
-  'This is financial information based on your linked account data, not personalized financial, tax, or investment advice. Finora never executes bank transfers, UPI payments, or securities trades on your behalf.';
+  'Educational guidance only — not a formal CA certificate, tax filing, audit opinion, or licensed investment advisory engagement. Verify with the latest official rules or a qualified professional before acting. Finora never executes bank transfers, UPI payments, or securities trades on your behalf.';
 
 export const responseTableSchema = z.object({
   title: z.string(),

@@ -14,6 +14,9 @@ export const financeIntentSchema = z.enum([
   'category_spending',
   'transactions_lookup',
   'financial_overview',
+  'tax_guidance',
+  'market_guidance',
+  'ca_planning',
   'general_question',
   'action_request',
 ]);
@@ -34,6 +37,7 @@ export const intentDetectionSchema = z.object({
       goalName: z.string().optional(),
       months: z.number().int().positive().optional(),
       accountId: z.string().optional(),
+      country: z.string().optional(),
     })
     .default({}),
   rationale: z.string().optional(),
@@ -62,6 +66,27 @@ export function detectIntentHeuristic(message: string): IntentDetectionResult {
     };
   }
 
+  if (
+    /\b(tax|itr|tds|gst|80c|80d|ltcg|stcg|deduction|rebate|advance tax|form\s*16|ay\b|fy\b|capital gains|income tax)\b/.test(
+      lower
+    )
+  ) {
+    return intent('tax_guidance', 0.9);
+  }
+  if (
+    /\b(stock market|share market|nifty|sensex|mutual[\s-]?fund|sip|equity|ipo|portfolio allocation|bull|bear)\b/.test(
+      lower
+    )
+  ) {
+    return intent('market_guidance', 0.85);
+  }
+  if (
+    /\b(chartered accountant|\bca\b|cfo|financial plan|wealth plan|tax plan|retirement plan)\b/.test(
+      lower
+    )
+  ) {
+    return intent('ca_planning', 0.85);
+  }
   if (/\b(unusual|anomaly|outlier|suspicious)\b/.test(lower)) {
     return intent('unusual_transactions', 0.85);
   }

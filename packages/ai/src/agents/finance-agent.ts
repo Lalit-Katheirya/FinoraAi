@@ -2,8 +2,9 @@ import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 import type { AiStructuredResponse } from '@finora/shared';
 import type { LLMProvider } from '../providers/types';
 import { createLLMProvider } from '../providers';
+import { isGreetingMessage } from '../providers/mock.provider';
 import { buildSystemPrompt } from '../prompts/system';
-import { buildFinancePrompt } from '../prompts/finance';
+import { buildFinancePrompt, isKnowledgeIntent } from '../prompts/finance';
 import {
   detectIntentHeuristic,
   type FinanceIntent,
@@ -89,9 +90,12 @@ export function createFinanceAgentGraph(
     if (state.permissionDenied || !state.intentResult) {
       return { selectedTools: [] };
     }
+    if (isGreetingMessage(state.message)) {
+      return { selectedTools: [] };
+    }
     const selectedTools = selectToolsForIntent(
       state.intentResult.intent,
-      state.intentResult.entities
+      { ...state.intentResult.entities, message: state.message }
     );
     return { selectedTools };
   };
@@ -113,8 +117,14 @@ export function createFinanceAgentGraph(
 
   const riskSafetyCheck = async (state: AgentState): Promise<Partial<AgentState>> => {
     const flags = [...state.safetyFlags];
+    const intent = state.intentResult?.intent ?? 'general_question';
 
-    if (!state.permissionDenied && allToolsEmpty(state.toolResults)) {
+    // Knowledge intents (tax/market/CA education) may proceed without personal tool data.
+    if (
+      !state.permissionDenied &&
+      allToolsEmpty(state.toolResults) &&
+      !isKnowledgeIntent(intent)
+    ) {
       flags.push('insufficient_tool_data');
       return {
         safetyFlags: flags,
@@ -133,6 +143,21 @@ export function createFinanceAgentGraph(
   const llmResponse = async (state: AgentState): Promise<Partial<AgentState>> => {
     if (state.structured?.insufficientData) {
       return {};
+    }
+
+    // Instant path — no OpenAI round-trip for greetings
+    if (isGreetingMessage(state.message)) {
+      return {
+        rawLlmText: JSON.stringify({
+          text: "Hi — I'm Finora AI, your personal CA-style finance manager. Ask about spending, budgets, goals, India tax (80C, ITR, LTCG), stock-market basics, or your Finora accounts.",
+          recommendations: [
+            'Try: “Explain 80C deductions”',
+            'Try: “What is my budget status?”',
+            'Try: “How does SIP work?”',
+          ],
+          disclaimer: FINANCIAL_INFO_DISCLAIMER,
+        }),
+      };
     }
 
     const intent = state.intentResult?.intent ?? 'general_question';
@@ -289,8 +314,13 @@ function enforceGrounding(text: string, state: AgentState): string {
   if (state.safetyFlags.includes('insufficient_tool_data')) {
     return AI_INSUFFICIENT_DATA_MESSAGE;
   }
-  // Soft guard: if tools empty somehow slipped through
-  if (!state.permissionDenied && allToolsEmpty(state.toolResults)) {
+  const intent = state.intentResult?.intent ?? 'general_question';
+  // Soft guard: if tools empty somehow slipped through for data-bound intents
+  if (
+    !state.permissionDenied &&
+    allToolsEmpty(state.toolResults) &&
+    !isKnowledgeIntent(intent)
+  ) {
     return AI_INSUFFICIENT_DATA_MESSAGE;
   }
   return text;

@@ -25,7 +25,7 @@ export interface FinanceChatResult {
 }
 
 /**
- * Public workflow entrypoint used by apps/api.
+ * Public workflow entrypoint used by apps/backend.
  */
 export async function runFinanceChat(
   input: FinanceChatInput,

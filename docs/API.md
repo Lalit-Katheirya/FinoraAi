@@ -2,7 +2,7 @@
 
 Base URL: `http://localhost:4000` (default `PORT=4000`)
 
-There was no formal OpenAPI/Swagger spec in the repo. This document is generated from `apps/api/src/routes` and Zod validators in `apps/api/src/validators`.
+There was no formal OpenAPI/Swagger spec in the repo. This document is generated from `apps/backend/src/routes` and Zod validators in `apps/backend/src/validators`.
 
 ## Conventions
 
@@ -351,9 +351,7 @@ There was no formal OpenAPI/Swagger spec in the repo. This document is generated
 
 ---
 
-## AI (`/api/ai`) — defined but not mounted
-
-`apps/api/src/routes/ai.routes.ts` exists and the Angular client calls these paths, but `routes/index.ts` does **not** currently mount them.
+## AI (`/api/ai`)
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -365,6 +363,6 @@ There was no formal OpenAPI/Swagger spec in the repo. This document is generated
 
 ## Source files
 
-- App mount: `apps/api/src/app.ts`
-- Route index: `apps/api/src/routes/index.ts`
-- Validators: `apps/api/src/validators/*.ts`
+- App mount: `apps/backend/src/app.ts`
+- Route index: `apps/backend/src/routes/index.ts`
+- Validators: `apps/backend/src/validators/*.ts`

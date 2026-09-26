@@ -67,11 +67,7 @@ export async function executeToolCalls(
   context: FinanceToolContext,
   calls: ToolCallRequest[]
 ): Promise<ToolCallResult[]> {
-  const results: ToolCallResult[] = [];
-  for (const call of calls) {
-    results.push(await executeToolCall(context, call));
-  }
-  return results;
+  return Promise.all(calls.map((call) => executeToolCall(context, call)));
 }
 
 async function dispatch(
