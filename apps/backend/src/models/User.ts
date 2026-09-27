@@ -15,6 +15,7 @@ export interface UserAttrs {
   currency: CurrencyCode;
   timezone: string;
   monthlyIncome?: number;
+  avatarUrl?: string;
   financialPreferences?: Record<string, unknown>;
   isDemo?: boolean;
   refreshTokens: RefreshTokenDoc[];
@@ -54,6 +55,7 @@ const userSchema = new Schema<UserDocument>(
     },
     timezone: { type: String, default: 'Asia/Kolkata' },
     monthlyIncome: { type: Number, min: 0 },
+    avatarUrl: { type: String, maxlength: 500 },
     financialPreferences: { type: Schema.Types.Mixed, default: {} },
     isDemo: { type: Boolean, default: false },
     refreshTokens: { type: [refreshTokenSchema], default: [] },

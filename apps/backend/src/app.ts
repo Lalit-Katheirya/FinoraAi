@@ -14,6 +14,7 @@ import {
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import apiRoutes from './routes';
 import authRoutes from './routes/auth.routes';
+import { getAvatarDir } from './middleware/upload.middleware';
 
 export function createApp() {
   const app = express();
@@ -26,6 +27,7 @@ export function createApp() {
       hsts: env.NODE_ENV === 'production',
       // API is called cross-origin (or via SPA proxy); allow reading responses
       crossOriginResourcePolicy: { policy: 'cross-origin' },
+      crossOriginEmbedderPolicy: false,
     })
   );
   app.use(
@@ -49,6 +51,15 @@ export function createApp() {
   app.use(cookieParser());
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+  // Profile avatars (and future uploads)
+  app.use(
+    '/uploads/avatars',
+    express.static(getAvatarDir(), {
+      maxAge: env.NODE_ENV === 'production' ? '7d' : 0,
+      fallthrough: true,
+    })
+  );
 
   if (env.NODE_ENV === 'development') {
     app.use(morgan('dev'));

@@ -7,12 +7,13 @@ import { CURRENCIES, type CurrencyCode } from '../../core/models';
 import { FinoraCard } from '../../shared/components/finora-card/finora-card';
 import { FinoraButton } from '../../shared/components/finora-button/finora-button';
 import { FinoraAlert } from '../../shared/components/finora-alert/finora-alert';
+import { FinoraAvatar } from '../../shared/components/finora-avatar/finora-avatar';
 import { extractErrorMessage } from '../../shared/utils/money';
 
 @Component({
   selector: 'app-settings-page',
   standalone: true,
-  imports: [ReactiveFormsModule, FinoraCard, FinoraButton, FinoraAlert],
+  imports: [ReactiveFormsModule, FinoraCard, FinoraButton, FinoraAlert, FinoraAvatar],
   templateUrl: './settings.html',
 })
 export class SettingsPage implements OnInit {
@@ -26,6 +27,7 @@ export class SettingsPage implements OnInit {
   readonly currencies = CURRENCIES;
   readonly savingProfile = signal(false);
   readonly savingPassword = signal(false);
+  readonly uploadingAvatar = signal(false);
   readonly deleting = signal(false);
 
   readonly profileForm = this.fb.nonNullable.group({
@@ -43,27 +45,58 @@ export class SettingsPage implements OnInit {
   ngOnInit(): void {
     const u = this.user();
     if (u) {
-      this.profileForm.patchValue({
-        name: u.name,
-        currency: u.currency,
-        timezone: u.timezone,
-        monthlyIncome: u.monthlyIncome ?? null,
-      });
+      this.patchProfile(u);
     } else {
       this.auth.me().subscribe({
-        next: (user) =>
-          this.profileForm.patchValue({
-            name: user.name,
-            currency: user.currency,
-            timezone: user.timezone,
-            monthlyIncome: user.monthlyIncome ?? null,
-          }),
+        next: (user) => this.patchProfile(user),
       });
     }
   }
 
   toggleTheme(): void {
     this.theme.toggle();
+  }
+
+  onAvatarSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      this.toast.error('Please choose an image file (JPG, PNG, WEBP, or GIF).');
+      return;
+    }
+    if (file.size > 1 * 1024 * 1024) {
+      this.toast.error('Image must be under 1 MB.');
+      return;
+    }
+
+    this.uploadingAvatar.set(true);
+    this.auth.uploadAvatar(file).subscribe({
+      next: () => {
+        this.toast.success('Profile photo updated');
+        this.uploadingAvatar.set(false);
+      },
+      error: (err) => {
+        this.toast.error(extractErrorMessage(err, 'Could not upload photo'));
+        this.uploadingAvatar.set(false);
+      },
+    });
+  }
+
+  removeAvatar(): void {
+    this.uploadingAvatar.set(true);
+    this.auth.removeAvatar().subscribe({
+      next: () => {
+        this.toast.success('Profile photo removed');
+        this.uploadingAvatar.set(false);
+      },
+      error: (err) => {
+        this.toast.error(extractErrorMessage(err));
+        this.uploadingAvatar.set(false);
+      },
+    });
   }
 
   saveProfile(): void {
@@ -73,15 +106,23 @@ export class SettingsPage implements OnInit {
     }
     const raw = this.profileForm.getRawValue();
     this.savingProfile.set(true);
-    // Backend profile PATCH may not exist yet — update local session + toast.
-    this.auth.updateLocalUser({
-      name: raw.name,
-      currency: raw.currency,
-      timezone: raw.timezone,
-      monthlyIncome: raw.monthlyIncome == null ? undefined : Number(raw.monthlyIncome),
-    });
-    this.toast.success('Profile preferences saved locally. Sync endpoint pending on API.');
-    this.savingProfile.set(false);
+    this.auth
+      .updateProfile({
+        name: raw.name,
+        currency: raw.currency,
+        timezone: raw.timezone,
+        monthlyIncome: raw.monthlyIncome == null ? null : Number(raw.monthlyIncome),
+      })
+      .subscribe({
+        next: () => {
+          this.toast.success('Profile saved');
+          this.savingProfile.set(false);
+        },
+        error: (err) => {
+          this.toast.error(extractErrorMessage(err, 'Could not save profile'));
+          this.savingProfile.set(false);
+        },
+      });
   }
 
   changePassword(): void {
@@ -116,6 +157,20 @@ export class SettingsPage implements OnInit {
         this.toast.error(extractErrorMessage(err));
         this.deleting.set(false);
       },
+    });
+  }
+
+  private patchProfile(u: {
+    name: string;
+    currency: CurrencyCode;
+    timezone: string;
+    monthlyIncome?: number;
+  }): void {
+    this.profileForm.patchValue({
+      name: u.name,
+      currency: u.currency,
+      timezone: u.timezone,
+      monthlyIncome: u.monthlyIncome ?? null,
     });
   }
 }

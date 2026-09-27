@@ -60,6 +60,7 @@ export interface UserDto {
   currency: CurrencyCode;
   timezone: string;
   monthlyIncome?: number;
+  avatarUrl?: string;
   financialPreferences?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;

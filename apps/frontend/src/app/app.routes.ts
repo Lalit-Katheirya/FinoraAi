@@ -1,8 +1,15 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { guestGuard } from './core/guards/guest.guard';
+import { guestMatch } from './core/guards/route-match';
 
 export const routes: Routes = [
+  {
+    path: '',
+    pathMatch: 'full',
+    canMatch: [guestMatch],
+    loadComponent: () => import('./features/landing/landing').then((m) => m.LandingPage),
+  },
   {
     path: 'login',
     canActivate: [guestGuard],
@@ -57,6 +64,15 @@ export const routes: Routes = [
         path: 'ai',
         loadComponent: () =>
           import('./features/ai-assistant/ai-assistant').then((m) => m.AiAssistantPage),
+      },
+      {
+        path: 'ai/skills',
+        loadComponent: () => import('./features/ai-skills/ai-skills').then((m) => m.AiSkillsPage),
+      },
+      {
+        path: 'ai/analytics',
+        loadComponent: () =>
+          import('./features/ai-analytics/ai-analytics').then((m) => m.AiAnalyticsPage),
       },
       {
         path: 'settings',

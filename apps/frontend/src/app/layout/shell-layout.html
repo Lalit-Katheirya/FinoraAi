@@ -1,117 +1,298 @@
-<div class="flex min-h-screen">
-  <!-- Desktop sidebar -->
-  <aside
-    class="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-[var(--finora-border)] bg-[var(--finora-surface)]/90 backdrop-blur lg:flex"
-  >
-    <div class="border-b border-[var(--finora-border)] px-5 py-5">
-      <a routerLink="/" class="block">
-        <div class="font-display text-xl font-extrabold tracking-tight text-[var(--finora-primary)]">FINORA AI</div>
-        <div class="finora-muted mt-1 text-xs">Your Money. Your Goals. One AI.</div>
-      </a>
-    </div>
-    <nav class="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-      @for (item of nav; track item.path) {
+<div class="cu-shell">
+  <!-- Primary icon rail -->
+  <aside class="cu-rail" aria-label="Primary navigation">
+    <a routerLink="/" class="cu-rail-brand" title="Finora AI">
+      <span class="cu-rail-brand-mark">F</span>
+    </a>
+
+    <nav class="cu-rail-nav">
+      @for (item of rail; track item.id) {
         <a
           [routerLink]="item.path"
-          routerLinkActive="bg-[var(--finora-primary-muted)] text-[var(--finora-primary)]"
-          [routerLinkActiveOptions]="{ exact: item.path === '/' }"
-          class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--finora-text-muted)] transition hover:bg-[var(--finora-surface-2)] hover:text-[var(--finora-text)]"
+          class="cu-rail-item"
+          [class.is-active]="isRailActive(item)"
+          [attr.title]="item.label"
         >
-          <span class="w-5 text-center opacity-80">{{ item.icon }}</span>
-          {{ item.label }}
+          <span class="cu-rail-icon-wrap">
+            <span class="cu-rail-icon" [attr.data-id]="item.id"></span>
+            @if (item.id === 'chat' && chatUnread()) {
+              <span class="cu-rail-badge">{{ chatUnread() }}</span>
+            }
+          </span>
+          <span class="cu-rail-label">{{ item.label }}</span>
         </a>
       }
     </nav>
-    <div class="border-t border-[var(--finora-border)] p-4">
-      <div class="mb-3 truncate text-sm font-medium">{{ user()?.name }}</div>
-      <div class="flex gap-2">
-        <finora-button variant="secondary" size="sm" className="flex-1" (clicked)="toggleTheme()">
-          {{ isDark() ? 'Light' : 'Dark' }}
-        </finora-button>
-        <finora-button variant="ghost" size="sm" (clicked)="logout()">Logout</finora-button>
-      </div>
+
+    <div class="cu-rail-footer">
+      <button
+        type="button"
+        class="cu-rail-item"
+        [attr.title]="isDark() ? 'Light mode' : 'Dark mode'"
+        (click)="toggleTheme()"
+      >
+        <span class="cu-rail-icon" [attr.data-id]="isDark() ? 'sun' : 'moon'"></span>
+        <span class="cu-rail-label">Theme</span>
+      </button>
+      <a routerLink="/settings" class="cu-rail-item" title="Invite / Settings">
+        <span class="cu-rail-icon" data-id="invite"></span>
+        <span class="cu-rail-label">Invite</span>
+      </a>
     </div>
   </aside>
 
-  <!-- Mobile drawer -->
-  @if (mobileOpen()) {
-    <div class="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" (click)="mobileOpen.set(false)"></div>
-    <aside
-      class="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-[var(--finora-border)] bg-[var(--finora-surface)] lg:hidden"
-    >
-      <div class="flex items-center justify-between border-b border-[var(--finora-border)] px-4 py-4">
-        <div class="font-display text-lg font-extrabold text-[var(--finora-primary)]">FINORA AI</div>
-        <button type="button" class="p-2" (click)="mobileOpen.set(false)">✕</button>
+  <!-- Secondary contextual sidebar -->
+  <aside class="cu-side" [class.is-collapsed]="sideCollapsed()" aria-label="Secondary navigation">
+    <div class="cu-side-head">
+      <button type="button" class="cu-workspace" title="Workspace">
+        <span class="cu-workspace-mark">{{ workspaceInitial() }}</span>
+        <span class="cu-workspace-name">{{ workspaceName() }}</span>
+        <span class="cu-workspace-caret">▾</span>
+      </button>
+      <button type="button" class="cu-icon-btn" title="Collapse sidebar" (click)="toggleSide()">
+        ⇤
+      </button>
+    </div>
+
+    <div class="cu-side-section-title">
+      <span>{{ sideTitle() }}</span>
+      <a routerLink="/ai" class="cu-icon-btn" title="New chat">↗</a>
+    </div>
+
+    @if (activeSection() === 'chat') {
+      <div class="cu-chat-panel">
+        <div class="cu-side-group">
+          <div class="cu-side-group-label">Super Agents</div>
+          @for (agent of chatSuperAgents; track agent.id) {
+            <a [routerLink]="agent.path" class="cu-chat-row">
+              <span class="cu-chat-avatar" [attr.data-tone]="agent.avatarTone">
+                {{ agent.initials }}
+                @if (agent.online) {
+                  <span class="cu-online-dot"></span>
+                }
+              </span>
+              <span class="cu-chat-row-label">{{ agent.name }}</span>
+              @if (agent.badge) {
+                <span class="cu-notif-badge">{{ agent.badge }}</span>
+              }
+            </a>
+          }
+          <a routerLink="/ai/skills" class="cu-chat-add">+ New Super Agent</a>
+        </div>
+
+        <div class="cu-side-group">
+          <div class="cu-side-group-label">Channels</div>
+          @for (ch of chatChannels(); track ch.id) {
+            <a [routerLink]="ch.path" class="cu-chat-row">
+              <span class="cu-channel-hash">
+                #
+                @if (ch.id === 'general') {
+                  <span class="cu-channel-hash-mark">{{ workspaceInitial() }}</span>
+                }
+              </span>
+              <span class="cu-chat-row-label">{{ ch.name }}</span>
+            </a>
+          }
+          <button type="button" class="cu-chat-add">+ Add Channel</button>
+        </div>
+
+        <div class="cu-side-group">
+          <div class="cu-side-group-label">Direct Messages</div>
+          @for (dm of chatDirectMessages(); track dm.id) {
+            <a [routerLink]="dm.path" class="cu-chat-row">
+              <span class="cu-chat-avatar" [attr.data-tone]="dm.avatarTone">
+                {{ dm.initials }}
+                @if (dm.online) {
+                  <span class="cu-online-dot"></span>
+                }
+              </span>
+              <span class="cu-chat-row-label">{{ dm.name }}</span>
+            </a>
+          }
+          <a routerLink="/ai" class="cu-chat-add">+ New message</a>
+        </div>
       </div>
-      <nav class="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-        @for (item of nav; track item.path) {
+    } @else {
+      <nav class="cu-side-nav">
+        @for (link of sideLinks(); track link.path + link.label) {
+          <a
+            [routerLink]="link.path"
+            routerLinkActive="is-active"
+            [routerLinkActiveOptions]="{ exact: !!link.exact }"
+            class="cu-side-link"
+          >
+            <span class="cu-side-link-icon">{{ link.icon }}</span>
+            <span class="cu-side-link-label">{{ link.label }}</span>
+            @if (link.badge) {
+              <span class="cu-badge" [class.is-count]="link.badge.length <= 2">{{ link.badge }}</span>
+            }
+          </a>
+        }
+      </nav>
+
+      @if (activeSection() === 'ai') {
+        <div class="cu-side-group">
+          <div class="cu-side-group-label">Finance Agents</div>
+          @for (link of agentLinks; track link.label) {
+            <a [routerLink]="link.path" class="cu-side-link">
+              <span class="cu-side-link-icon">{{ link.icon }}</span>
+              <span class="cu-side-link-label">{{ link.label }}</span>
+              @if (link.badge) {
+                <span class="cu-badge is-count">{{ link.badge }}</span>
+              }
+            </a>
+          }
+        </div>
+
+        <div class="cu-side-group">
+          <div class="cu-side-group-label">Recent chats</div>
+          @for (chat of recentChats; track chat.label) {
+            <a [routerLink]="chat.path" class="cu-side-link cu-side-link-muted">
+              <span class="cu-side-link-icon">💬</span>
+              <span class="cu-side-link-label">{{ chat.label }}</span>
+            </a>
+          }
+        </div>
+      }
+
+      <div class="cu-side-metrics">
+        <div class="cu-metric">
+          <span class="cu-metric-dot"></span>
+          <span>Finora Brain ready</span>
+        </div>
+        <div class="cu-metric">
+          <span class="cu-metric-dot is-credits"></span>
+          <span>Credits open</span>
+        </div>
+      </div>
+    }
+  </aside>
+
+  <!-- Expand rail when side collapsed -->
+  @if (sideCollapsed()) {
+    <button type="button" class="cu-side-expand" title="Expand sidebar" (click)="toggleSide()">⇥</button>
+  }
+
+  <!-- Mobile overlay drawer -->
+  @if (mobileOpen()) {
+    <div class="cu-mobile-backdrop" (click)="mobileOpen.set(false)"></div>
+    <aside class="cu-mobile-drawer">
+      <div class="cu-mobile-drawer-head">
+        <div class="font-display text-lg font-extrabold text-[var(--finora-primary)]">FINORA AI</div>
+        <button type="button" class="cu-icon-btn" (click)="mobileOpen.set(false)">✕</button>
+      </div>
+      <nav class="cu-side-nav p-2">
+        @for (item of rail; track item.id) {
           <a
             [routerLink]="item.path"
-            routerLinkActive="bg-[var(--finora-primary-muted)] text-[var(--finora-primary)]"
-            [routerLinkActiveOptions]="{ exact: item.path === '/' }"
-            class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium"
+            class="cu-side-link"
+            [class.is-active]="isRailActive(item)"
+            (click)="mobileOpen.set(false)"
           >
-            <span>{{ item.icon }}</span>
-            {{ item.label }}
+            <span class="cu-side-link-label">{{ item.label }}</span>
           </a>
         }
       </nav>
     </aside>
   }
 
-  <div class="flex min-w-0 flex-1 flex-col pb-20 lg:pb-0">
-    <header
-      class="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-[var(--finora-border)] bg-[var(--finora-bg)]/85 px-4 py-3 backdrop-blur lg:px-8"
-    >
-      <div class="flex items-center gap-3">
-        <button
-          type="button"
-          class="rounded-xl border border-[var(--finora-border)] px-3 py-2 lg:hidden"
-          (click)="mobileOpen.set(true)"
-        >
-          ☰
-        </button>
-        <div>
-          <h1 class="m-0 font-display text-lg font-bold lg:text-xl">{{ pageTitle() }}</h1>
-        </div>
+  <!-- Main column -->
+  <div class="cu-main">
+    <header class="cu-topbar">
+      <div class="cu-topbar-left">
+        <button type="button" class="cu-icon-btn cu-mobile-only" (click)="mobileOpen.set(true)">☰</button>
+        <h1 class="cu-topbar-title">{{ pageTitle() }}</h1>
       </div>
-      <div class="flex items-center gap-2">
-        <a routerLink="/ai" class="hidden sm:inline-flex">
-          <finora-button variant="secondary" size="sm">Ask AI</finora-button>
+
+      <div class="cu-topbar-center">
+        <label class="cu-search">
+          <span class="cu-search-icon">⌕</span>
+          <input type="search" placeholder="Search" readonly />
+          <kbd>Ctrl K</kbd>
+        </label>
+        <a routerLink="/ai" class="cu-ai-chats-btn">
+          <span>✦</span>
+          AI Chats
         </a>
-        <finora-button variant="ghost" size="sm" className="lg:hidden" (clicked)="toggleTheme()">
-          {{ isDark() ? '☀' : '☾' }}
-        </finora-button>
+      </div>
+
+      <div class="cu-topbar-right">
+        @if (showAiWorkChrome()) {
+          <a routerLink="/ai/skills" class="cu-new-skill-btn">+ New Skill</a>
+        }
+
+        <div
+          class="relative"
+          (mouseenter)="openProfileMenu()"
+          (mouseleave)="scheduleCloseProfileMenu()"
+        >
+          <button
+            type="button"
+            class="cu-avatar-btn"
+            [attr.aria-expanded]="profileMenuOpen()"
+            aria-haspopup="menu"
+            (click)="toggleProfileMenu($event)"
+          >
+            <finora-avatar [name]="user()?.name || ''" [src]="user()?.avatarUrl" size="sm" />
+          </button>
+
+          @if (profileMenuOpen()) {
+            <div
+              class="profile-menu"
+              role="menu"
+              (click)="keepProfileMenuOpen($event)"
+              (mouseenter)="openProfileMenu()"
+              (mouseleave)="scheduleCloseProfileMenu()"
+            >
+              <div class="profile-menu-head">
+                <finora-avatar [name]="user()?.name || ''" [src]="user()?.avatarUrl" size="md" />
+                <div class="min-w-0">
+                  <div class="truncate text-sm font-semibold">{{ user()?.name }}</div>
+                  <div class="finora-muted truncate text-xs">{{ user()?.email }}</div>
+                </div>
+              </div>
+              <div class="p-1.5">
+                <a routerLink="/settings" role="menuitem" class="profile-menu-item" (click)="profileMenuOpen.set(false)">
+                  <span class="profile-menu-icon">⚙</span> Settings
+                </a>
+                <a routerLink="/ai" role="menuitem" class="profile-menu-item" (click)="profileMenuOpen.set(false)">
+                  <span class="profile-menu-icon">✦</span> AI Chat
+                </a>
+                <a routerLink="/ai/skills" role="menuitem" class="profile-menu-item" (click)="profileMenuOpen.set(false)">
+                  <span class="profile-menu-icon">⚡</span> Skills
+                </a>
+                <button type="button" role="menuitem" class="profile-menu-item w-full" (click)="toggleTheme()">
+                  <span class="profile-menu-icon">{{ isDark() ? '☀' : '☾' }}</span>
+                  {{ isDark() ? 'Light mode' : 'Dark mode' }}
+                </button>
+              </div>
+              <div class="border-t border-[var(--finora-border)] p-1.5">
+                <button type="button" role="menuitem" class="profile-menu-item profile-menu-danger w-full" (click)="logout()">
+                  <span class="profile-menu-icon">⎋</span> Log out
+                </button>
+              </div>
+            </div>
+          }
+        </div>
       </div>
     </header>
 
-    <main class="mx-auto w-full max-w-7xl flex-1 px-4 py-6 lg:px-8">
+    <main class="cu-content" [class.cu-content-wide]="showAiWorkChrome() || isChatPage()">
       <router-outlet />
     </main>
   </div>
 
   <!-- Mobile bottom nav -->
-  <nav
-    class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-[var(--finora-border)] bg-[var(--finora-surface)]/95 px-1 py-2 backdrop-blur lg:hidden"
-  >
-    @for (item of nav.slice(0, 4); track item.path) {
-      <a
-        [routerLink]="item.path"
-        routerLinkActive="text-[var(--finora-primary)]"
-        [routerLinkActiveOptions]="{ exact: item.path === '/' }"
-        class="flex flex-col items-center gap-1 rounded-lg px-1 py-1 text-[10px] font-medium text-[var(--finora-text-muted)]"
-      >
-        <span class="text-base">{{ item.icon }}</span>
-        {{ item.label }}
+  <nav class="cu-bottom-nav" aria-label="Mobile navigation">
+    @for (item of rail.slice(0, 4); track item.id) {
+      <a [routerLink]="item.path" class="cu-bottom-item" [class.is-active]="isRailActive(item)">
+        <span class="cu-rail-icon" [attr.data-id]="item.id"></span>
+        <span>{{ item.label }}</span>
       </a>
     }
-    <button
-      type="button"
-      class="flex flex-col items-center gap-1 rounded-lg px-1 py-1 text-[10px] font-medium text-[var(--finora-text-muted)]"
-      (click)="mobileOpen.set(true)"
-    >
-      <span class="text-base">⋯</span>
-      More
+    <button type="button" class="cu-bottom-item" (click)="mobileOpen.set(true)">
+      <span class="cu-rail-icon" data-id="more"></span>
+      <span>More</span>
     </button>
   </nav>
 </div>

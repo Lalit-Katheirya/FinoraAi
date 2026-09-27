@@ -119,6 +119,34 @@ export class AuthService {
     );
   }
 
+  updateProfile(patch: {
+    name?: string;
+    currency?: CurrencyCode;
+    timezone?: string;
+    monthlyIncome?: number | null;
+  }): Observable<UserDto> {
+    return this.api.patch<{ user: UserDto }>('/auth/profile', patch).pipe(
+      tap((res) => this.userSignal.set(res.user)),
+      map((res) => res.user)
+    );
+  }
+
+  uploadAvatar(file: File): Observable<UserDto> {
+    const fd = new FormData();
+    fd.append('avatar', file);
+    return this.api.upload<{ user: UserDto }>('/auth/avatar', fd).pipe(
+      tap((res) => this.userSignal.set(res.user)),
+      map((res) => res.user)
+    );
+  }
+
+  removeAvatar(): Observable<UserDto> {
+    return this.api.delete<{ user: UserDto }>('/auth/avatar').pipe(
+      tap((res) => this.userSignal.set(res.user)),
+      map((res) => res.user)
+    );
+  }
+
   changePassword(currentPassword: string, newPassword: string): Observable<unknown> {
     return this.api.post('/auth/change-password', { currentPassword, newPassword }).pipe(
       tap(() => this.clearSession())

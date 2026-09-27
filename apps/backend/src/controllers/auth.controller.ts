@@ -2,10 +2,12 @@ import type { Request, Response, NextFunction } from 'express';
 import { sendSuccess, sendMessage } from '../utils/apiResponse';
 import { AppError } from '../utils/AppError';
 import * as authService from '../services/auth.service';
+import { getAvatarPublicUrl } from '../middleware/upload.middleware';
 import type {
   RegisterBody,
   LoginBody,
   ChangePasswordBody,
+  UpdateProfileBody,
 } from '../validators/auth.validators';
 
 function getRefreshToken(req: Request): string | undefined {
@@ -86,6 +88,59 @@ export async function me(
       throw AppError.unauthorized();
     }
     const user = await authService.me(req.user.id);
+    sendSuccess(res, { user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateProfile(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user) {
+      throw AppError.unauthorized();
+    }
+    const body = req.body as UpdateProfileBody;
+    const user = await authService.updateProfile(req.user.id, body);
+    sendSuccess(res, { user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function uploadAvatar(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user) {
+      throw AppError.unauthorized();
+    }
+    if (!req.file) {
+      throw AppError.badRequest('Avatar image file is required');
+    }
+    const avatarUrl = getAvatarPublicUrl(req.file.filename);
+    const user = await authService.setAvatarUrl(req.user.id, avatarUrl);
+    sendSuccess(res, { user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function removeAvatar(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user) {
+      throw AppError.unauthorized();
+    }
+    const user = await authService.removeAvatar(req.user.id);
     sendSuccess(res, { user });
   } catch (err) {
     next(err);

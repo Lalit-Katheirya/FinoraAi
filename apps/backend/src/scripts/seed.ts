@@ -18,6 +18,14 @@ import { categoryService } from '../services/category.service';
 const DEMO_EMAIL = 'demo@finora.ai';
 const DEMO_PASSWORD = 'Demo@12345';
 
+function parseSeedEmail(): string {
+  const arg = process.argv.find((a) => a.startsWith('--email='));
+  if (arg) return arg.slice('--email='.length).trim().toLowerCase();
+  const envEmail = process.env.SEED_EMAIL?.trim();
+  if (envEmail) return envEmail.toLowerCase();
+  return DEMO_EMAIL;
+}
+
 interface SeedTx {
   accountKey: 'salary' | 'savings' | 'credit';
   type: 'income' | 'expense' | 'transfer';
@@ -35,22 +43,22 @@ function daysAgoDate(days: number): Date {
   return d;
 }
 
+async function clearUserFinanceData(uid: unknown): Promise<void> {
+  await Promise.all([
+    Account.deleteMany({ userId: uid }),
+    Transaction.deleteMany({ userId: uid }),
+    Budget.deleteMany({ userId: uid }),
+    Goal.deleteMany({ userId: uid }),
+    Investment.deleteMany({ userId: uid }),
+    RecurringExpense.deleteMany({ userId: uid }),
+  ]);
+}
+
 async function seed(): Promise<void> {
   await connectDatabase();
 
-  const existing = await User.findOne({ email: DEMO_EMAIL });
-  if (existing) {
-    const uid = existing._id;
-    await Promise.all([
-      Account.deleteMany({ userId: uid }),
-      Transaction.deleteMany({ userId: uid }),
-      Budget.deleteMany({ userId: uid }),
-      Goal.deleteMany({ userId: uid }),
-      Investment.deleteMany({ userId: uid }),
-      RecurringExpense.deleteMany({ userId: uid }),
-    ]);
-    await User.deleteOne({ _id: uid });
-  }
+  const targetEmail = parseSeedEmail();
+  const isDemoTarget = targetEmail === DEMO_EMAIL;
 
   await categoryService.ensureSystemSeeded();
   const categories = await Category.find({ isSystem: true }).exec();
@@ -58,21 +66,40 @@ async function seed(): Promise<void> {
     categories.map((c) => [String(c.name), String(c._id)])
   );
 
-  const passwordHash = await argon2.hash(DEMO_PASSWORD);
+  let user = await User.findOne({ email: targetEmail });
 
-  const user = await User.create({
-    name: 'Demo User',
-    email: DEMO_EMAIL,
-    passwordHash,
-    currency: 'INR',
-    timezone: 'Asia/Kolkata',
-    monthlyIncome: 185000,
-    isDemo: true,
-    financialPreferences: {
-      riskTolerance: 'moderate',
-      savingsTargetPercent: 30,
-    },
-  });
+  if (user) {
+    await clearUserFinanceData(user._id);
+    user.monthlyIncome = 185000;
+    user.currency = user.currency || 'INR';
+    user.timezone = user.timezone || 'Asia/Kolkata';
+    if (!user.financialPreferences) {
+      user.financialPreferences = {
+        riskTolerance: 'moderate',
+        savingsTargetPercent: 30,
+      };
+    }
+    await user.save();
+  } else if (isDemoTarget) {
+    const passwordHash = await argon2.hash(DEMO_PASSWORD);
+    user = await User.create({
+      name: 'Demo User',
+      email: DEMO_EMAIL,
+      passwordHash,
+      currency: 'INR',
+      timezone: 'Asia/Kolkata',
+      monthlyIncome: 185000,
+      isDemo: true,
+      financialPreferences: {
+        riskTolerance: 'moderate',
+        savingsTargetPercent: 30,
+      },
+    });
+  } else {
+    throw new Error(
+      `User not found for email "${targetEmail}". Register/login first, then re-run seed with --email=`
+    );
+  }
 
   const userId = String(user._id);
 
@@ -413,13 +440,14 @@ async function seed(): Promise<void> {
 
   logger.info(
     {
-      email: DEMO_EMAIL,
-      password: DEMO_PASSWORD,
+      email: targetEmail,
       userId,
+      name: user.name,
+      password: isDemoTarget ? DEMO_PASSWORD : '(unchanged — use your login)',
       categories: CATEGORY_NAMES.length,
       transactions: txDocs.length,
     },
-    'Demo seed completed'
+    'User-scoped seed completed'
   );
 
   await disconnectDatabase();

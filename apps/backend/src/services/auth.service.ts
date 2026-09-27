@@ -98,6 +98,7 @@ function toUserDto(user: UserDocument): UserDto {
     currency: user.currency,
     timezone: user.timezone,
     monthlyIncome: user.monthlyIncome,
+    avatarUrl: user.avatarUrl,
     financialPreferences: user.financialPreferences,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
@@ -249,6 +250,41 @@ export async function me(userId: string): Promise<UserDto> {
   if (!user) {
     throw AppError.notFound('User not found');
   }
+  return toUserDto(user);
+}
+
+export async function updateProfile(
+  userId: string,
+  patch: {
+    name?: string;
+    currency?: CurrencyCode;
+    timezone?: string;
+    monthlyIncome?: number | null;
+  }
+): Promise<UserDto> {
+  const user = await userRepository.updateProfile(userId, patch);
+  if (!user) {
+    throw AppError.notFound('User not found');
+  }
+  logger.info({ userId, action: 'updateProfile' }, 'Profile updated');
+  return toUserDto(user);
+}
+
+export async function setAvatarUrl(userId: string, avatarUrl: string): Promise<UserDto> {
+  const user = await userRepository.updateAvatarUrl(userId, avatarUrl);
+  if (!user) {
+    throw AppError.notFound('User not found');
+  }
+  logger.info({ userId, action: 'uploadAvatar' }, 'Avatar updated');
+  return toUserDto(user);
+}
+
+export async function removeAvatar(userId: string): Promise<UserDto> {
+  const user = await userRepository.updateAvatarUrl(userId, null);
+  if (!user) {
+    throw AppError.notFound('User not found');
+  }
+  logger.info({ userId, action: 'removeAvatar' }, 'Avatar removed');
   return toUserDto(user);
 }
 

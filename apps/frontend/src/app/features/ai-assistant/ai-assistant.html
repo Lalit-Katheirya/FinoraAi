@@ -1,121 +1,168 @@
-<div class="finora-page h-full">
-  <div class="finora-page-header">
-    <div>
-      <h2 class="finora-page-title">AI Assistant</h2>
-      <p class="finora-page-subtitle">ChatGPT-style guidance grounded in your Finora data.</p>
-    </div>
-  </div>
+<div class="brain-chat">
+  <header class="brain-top">
+    <button type="button" class="brain-new-chat" (click)="newChat()">New Chat</button>
+    <a routerLink="/ai/skills" class="brain-top-icon" title="Skills workspace">▦</a>
+  </header>
 
-  <div class="grid gap-4 lg:grid-cols-[1fr_280px]">
-    <section class="finora-surface flex min-h-[70vh] flex-col overflow-hidden">
-      <div #scrollBox class="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
-        @for (msg of messages(); track msg.id) {
-          <div class="flex" [class.justify-end]="msg.role === 'user'">
-            <div class="max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed" [ngClass]="msg.role === 'user' ? 'user-bubble' : 'assistant-bubble'">
-              <p class="m-0 whitespace-pre-wrap">{{ msg.content }}</p>
+  <div #scrollBox class="brain-thread">
+    @for (msg of messages(); track msg.id) {
+      @if (msg.role === 'user') {
+        <div class="brain-row brain-row-user">
+          <div class="brain-user-bubble">
+            <p class="brain-text">{{ msg.content }}</p>
+          </div>
+        </div>
+      } @else {
+        <div class="brain-row brain-row-ai">
+          <div class="brain-ai-head">
+            <span class="brain-mark" aria-hidden="true"></span>
+            <span class="brain-name">Finora</span>
+          </div>
+          <div class="brain-ai-body">
+            <p class="brain-text">{{ msg.content }}</p>
 
-              @if (msg.structured?.numbers?.length) {
-                <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                  @for (n of msg.structured!.numbers!; track n.label) {
-                    <div class="rounded-xl bg-black/5 px-3 py-2 dark:bg-white/5">
-                      <div class="text-xs opacity-70">{{ n.label }}</div>
-                      <finora-currency [amount]="n.value" [currency]="n.currency || 'INR'" className="font-semibold" />
-                    </div>
-                  }
-                </div>
-              }
-
-              @if (msg.structured?.tables?.length) {
-                @for (table of msg.structured!.tables!; track table.title) {
-                  <div class="mt-3 overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
-                    <div class="px-3 py-2 text-xs font-semibold opacity-80">{{ table.title }}</div>
-                    <table class="min-w-full text-xs">
-                      <thead>
-                        <tr>
-                          @for (h of table.headers; track h) {
-                            <th class="px-3 py-1.5 text-left font-semibold">{{ h }}</th>
-                          }
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (row of table.rows; track $index) {
-                          <tr class="border-t border-black/10 dark:border-white/10">
-                            @for (cell of row; track $index) {
-                              <td class="px-3 py-1.5">{{ cell }}</td>
-                            }
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
+            @if (msg.structured?.numbers?.length) {
+              <div class="brain-cards">
+                @for (n of msg.structured!.numbers!; track n.label) {
+                  <div class="brain-card">
+                    <div class="brain-card-label">{{ n.label }}</div>
+                    <finora-currency [amount]="n.value" [currency]="n.currency || 'INR'" className="font-semibold" />
                   </div>
                 }
-              }
+              </div>
+            }
 
-              @if (msg.structured?.recommendations?.length) {
-                <ul class="mt-3 list-disc space-y-1 pl-4">
-                  @for (rec of msg.structured!.recommendations!; track rec) {
-                    <li>{{ rec }}</li>
-                  }
-                </ul>
-              }
-
-              @if (msg.structured?.warnings?.length) {
-                <div class="mt-3 space-y-1">
-                  @for (w of msg.structured!.warnings!; track w) {
-                    <div class="rounded-lg bg-amber-500/15 px-2 py-1 text-xs">{{ w }}</div>
-                  }
+            @if (msg.structured?.tables?.length) {
+              @for (table of msg.structured!.tables!; track table.title) {
+                <div class="brain-table-wrap">
+                  <div class="brain-table-title">{{ table.title }}</div>
+                  <table class="brain-table">
+                    <thead>
+                      <tr>
+                        @for (h of table.headers; track h) {
+                          <th>{{ h }}</th>
+                        }
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of table.rows; track $index) {
+                        <tr>
+                          @for (cell of row; track $index) {
+                            <td>{{ cell }}</td>
+                          }
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
                 </div>
               }
+            }
 
-              @if (msg.structured?.disclaimer) {
-                <p class="mt-3 mb-0 text-[11px] opacity-70">{{ msg.structured!.disclaimer }}</p>
-              }
-            </div>
+            @if (msg.structured?.recommendations?.length) {
+              <ul class="brain-list">
+                @for (rec of msg.structured!.recommendations!; track rec) {
+                  <li>{{ rec }}</li>
+                }
+              </ul>
+            }
+
+            @if (msg.structured?.warnings?.length) {
+              <div class="brain-warnings">
+                @for (w of msg.structured!.warnings!; track w) {
+                  <div class="brain-warn">{{ w }}</div>
+                }
+              </div>
+            }
+
+            @if (msg.structured?.disclaimer) {
+              <p class="brain-disclaimer">{{ msg.structured!.disclaimer }}</p>
+            }
           </div>
-        }
-
-        @if (loading()) {
-          <div class="finora-muted text-sm">Finora is thinking…</div>
-        }
-      </div>
-
-      @if (error()) {
-        <div class="px-4 pb-2"><finora-alert tone="danger">{{ error() }}</finora-alert></div>
+        </div>
       }
+    }
 
-      <form class="border-t border-[var(--finora-border)] p-4" [formGroup]="form" (ngSubmit)="send()">
-        <div class="flex gap-2">
-          <input
-            class="flex-1 rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface)] px-3 py-3 outline-none focus:border-[var(--finora-primary)]"
-            formControlName="message"
-            placeholder="Ask about cashflow, budgets, goals…"
-            autocomplete="off"
-          />
-          <finora-button type="submit" [loading]="loading()">Send</finora-button>
+    @if (loading()) {
+      <div class="brain-row brain-row-ai">
+        <div class="brain-ai-head">
+          <span class="brain-mark is-pulse" aria-hidden="true"></span>
+          <span class="brain-name">Finora</span>
         </div>
-        <p class="finora-muted mt-2 mb-0 text-[11px]">
-          Disclaimer: Finora AI provides informational guidance only — not financial, tax, or investment advice.
-        </p>
-      </form>
-    </section>
+        <p class="brain-thinking">Thinking…</p>
+      </div>
+    }
+  </div>
 
-    <aside class="flex flex-col gap-3">
-      <finora-card title="Suggested prompts">
-        <div class="flex flex-col gap-2">
-          @for (p of prompts; track p) {
-            <button
-              type="button"
-              class="rounded-xl border border-[var(--finora-border)] bg-[var(--finora-surface-2)]/50 px-3 py-2 text-left text-sm transition hover:border-[var(--finora-primary)]"
-              (click)="usePrompt(p)"
-            >
-              {{ p }}
-            </button>
-          }
+  @if (error()) {
+    <div class="brain-error">{{ error() }}</div>
+  }
+
+  <div class="brain-composer-wrap">
+    @if (skillsOpen()) {
+      <div class="brain-skills-panel">
+        <div class="brain-skills-title">Skills</div>
+        @for (p of prompts; track p) {
+          <button type="button" class="brain-skill-item" (click)="usePrompt(p)">
+            <span class="brain-skill-bolt">⚡</span>
+            {{ p }}
+          </button>
+        }
+        <a routerLink="/ai/skills" class="brain-skill-item brain-skill-link" (click)="skillsOpen.set(false)">
+          <span class="brain-skill-bolt">✦</span>
+          Open Skills hub
+        </a>
+      </div>
+    }
+
+    <form class="brain-composer" [formGroup]="form" (ngSubmit)="send()">
+      <textarea
+        #composerInput
+        class="brain-composer-input"
+        formControlName="message"
+        rows="1"
+        placeholder="Tell AI what to do next"
+        autocomplete="off"
+        (keydown)="onComposerKeydown($event)"
+      ></textarea>
+
+      <div class="brain-composer-bar">
+        <div class="brain-composer-left">
+          <button type="button" class="brain-icon-btn" title="Attach" disabled>+</button>
+          <button
+            type="button"
+            class="brain-skills-btn"
+            [class.is-open]="skillsOpen()"
+            (click)="toggleSkills()"
+          >
+            <span>⚡</span>
+            Skills
+          </button>
         </div>
-      </finora-card>
-      <finora-alert tone="info" title="Privacy">
-        Messages are processed to answer with your account context. Avoid sharing sensitive credentials.
-      </finora-alert>
-    </aside>
+
+        <div class="brain-composer-right">
+          <button type="button" class="brain-agent-btn" (click)="cycleAgent()" title="Agent mode">
+            <span class="brain-mark brain-mark-sm" aria-hidden="true"></span>
+            <span>{{ agentMode() }}</span>
+            <span class="brain-caret">▾</span>
+          </button>
+          <button
+            type="submit"
+            class="brain-send-btn"
+            [disabled]="loading() || form.invalid"
+            [attr.title]="form.value.message?.trim() ? 'Send' : 'Voice (coming soon)'"
+          >
+            @if (form.value.message?.trim()) {
+              ↑
+            } @else {
+              ⌨
+            }
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <p class="brain-legal">
+      Finora AI is informational only — not financial, tax, or investment advice.
+    </p>
   </div>
 </div>

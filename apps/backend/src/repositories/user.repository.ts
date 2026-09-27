@@ -73,6 +73,36 @@ export async function updatePasswordHash(
   await User.updateOne({ _id: userId }, { $set: { passwordHash } });
 }
 
+export async function updateProfile(
+  userId: string,
+  patch: {
+    name?: string;
+    currency?: CurrencyCode;
+    timezone?: string;
+    monthlyIncome?: number | null;
+  }
+): Promise<UserDocument | null> {
+  const $set: Record<string, unknown> = {};
+  if (patch.name !== undefined) $set.name = patch.name;
+  if (patch.currency !== undefined) $set.currency = patch.currency;
+  if (patch.timezone !== undefined) $set.timezone = patch.timezone;
+  if (patch.monthlyIncome !== undefined) {
+    $set.monthlyIncome = patch.monthlyIncome === null ? undefined : patch.monthlyIncome;
+  }
+
+  return User.findByIdAndUpdate(userId, { $set }, { new: true });
+}
+
+export async function updateAvatarUrl(
+  userId: string,
+  avatarUrl: string | null
+): Promise<UserDocument | null> {
+  if (avatarUrl === null) {
+    return User.findByIdAndUpdate(userId, { $unset: { avatarUrl: 1 } }, { new: true });
+  }
+  return User.findByIdAndUpdate(userId, { $set: { avatarUrl } }, { new: true });
+}
+
 export async function deleteUser(userId: string): Promise<boolean> {
   const result = await User.deleteOne({ _id: userId });
   return result.deletedCount === 1;

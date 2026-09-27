@@ -30,6 +30,18 @@ export const changePasswordSchema = z.object({
   }),
 });
 
+export const updateProfileSchema = z.object({
+  body: z
+    .object({
+      name: z.string().trim().min(1).max(120).optional(),
+      currency: currencyEnum.optional(),
+      timezone: z.string().trim().min(1).max(64).optional(),
+      monthlyIncome: z.number().min(0).finite().nullable().optional(),
+    })
+    .refine((v) => Object.keys(v).length > 0, { message: 'No fields to update' }),
+});
+
 export type RegisterBody = z.infer<typeof registerSchema>['body'];
 export type LoginBody = z.infer<typeof loginSchema>['body'];
 export type ChangePasswordBody = z.infer<typeof changePasswordSchema>['body'];
+export type UpdateProfileBody = z.infer<typeof updateProfileSchema>['body'];

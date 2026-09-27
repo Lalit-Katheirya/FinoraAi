@@ -1,40 +1,17 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import type { ChartData, ChartType } from 'chart.js';
 import { FinanceApiService } from '../../core/services/finance-api.service';
+import { AuthService } from '../../core/auth/auth.service';
 import type { DashboardSummaryDto, InsightSeverity } from '../../core/models';
-import { FinoraStatCard } from '../../shared/components/finora-stat-card/finora-stat-card';
-import { FinoraCard } from '../../shared/components/finora-card/finora-card';
 import { FinoraChart } from '../../shared/components/finora-chart/finora-chart';
 import { FinoraTransactionRow } from '../../shared/components/finora-transaction-row/finora-transaction-row';
 import { FinoraBadge } from '../../shared/components/finora-badge/finora-badge';
 import { FinoraSkeleton } from '../../shared/components/finora-skeleton/finora-skeleton';
-import { FinoraAlert } from '../../shared/components/finora-alert/finora-alert';
-import { FinoraButton } from '../../shared/components/finora-button/finora-button';
-import { FinoraEmptyState } from '../../shared/components/finora-empty-state/finora-empty-state';
+import { FinoraCurrency } from '../../shared/components/finora-currency/finora-currency';
 import { extractErrorMessage } from '../../shared/utils/money';
-
-export type ChartFormOption = { id: ChartType; label: string };
-
-const FLOW_FORMS: ChartFormOption[] = [
-  { id: 'bar', label: 'Bar' },
-  { id: 'line', label: 'Line' },
-  { id: 'radar', label: 'Radar' },
-];
-
-const CATEGORY_FORMS: ChartFormOption[] = [
-  { id: 'doughnut', label: 'Donut' },
-  { id: 'pie', label: 'Pie' },
-  { id: 'polarArea', label: 'Polar' },
-  { id: 'bar', label: 'Bar' },
-];
-
-const TREND_FORMS: ChartFormOption[] = [
-  { id: 'line', label: 'Line' },
-  { id: 'bar', label: 'Bar' },
-  { id: 'doughnut', label: 'Donut' },
-];
 
 const CATEGORY_PALETTE = [
   '#00E599',
@@ -53,37 +30,71 @@ const CATEGORY_PALETTE = [
   imports: [
     RouterLink,
     DecimalPipe,
-    FinoraStatCard,
-    FinoraCard,
+    ReactiveFormsModule,
     FinoraChart,
     FinoraTransactionRow,
     FinoraBadge,
     FinoraSkeleton,
-    FinoraAlert,
-    FinoraButton,
-    FinoraEmptyState,
+    FinoraCurrency,
   ],
   templateUrl: './dashboard.html',
+  styleUrl: './dashboard.scss',
 })
 export class DashboardPage implements OnInit {
   private readonly api = inject(FinanceApiService);
+  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly fb = inject(FormBuilder);
+
+  readonly user = this.auth.user;
+  readonly greeting = computed(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  });
+  readonly displayName = computed(() => this.user()?.name?.split(/\s+/)[0] || 'there');
 
   readonly loading = signal(true);
   readonly error = signal('');
   readonly data = signal<DashboardSummaryDto | null>(null);
-
-  readonly flowForms = FLOW_FORMS;
-  readonly categoryForms = CATEGORY_FORMS;
-  readonly trendForms = TREND_FORMS;
-
   readonly flowChartType = signal<ChartType>('bar');
   readonly categoryChartType = signal<ChartType>('doughnut');
-  readonly trendChartType = signal<ChartType>('line');
 
-  readonly goTransactions = (): void => {
-    void this.router.navigateByUrl('/transactions');
-  };
+  readonly askForm = this.fb.nonNullable.group({
+    prompt: ['', [Validators.required, Validators.minLength(2)]],
+  });
+
+  readonly aiActions = [
+    {
+      title: 'Analyze spending',
+      desc: 'Find leaks and category spikes this month',
+      prompt: 'Where am I overspending this month?',
+      icon: '◎',
+      tone: 'green',
+    },
+    {
+      title: 'Trim my budget',
+      desc: 'Suggest cuts without hurting essentials',
+      prompt: 'Help me rebuild this month’s budget and show where I can cut.',
+      icon: '▣',
+      tone: 'blue',
+    },
+    {
+      title: 'Forecast runway',
+      desc: 'Project cashflow for the next 90 days',
+      prompt: 'Forecast my next 3 months of cashflow with a safety buffer.',
+      icon: '↗',
+      tone: 'purple',
+    },
+    {
+      title: 'Goal check-in',
+      desc: 'See if savings pace hits your targets',
+      prompt: 'How much should I save for my top goal based on current pace?',
+      icon: '✦',
+      tone: 'orange',
+    },
+  ] as const;
 
   readonly savingsRate = computed(() => {
     const d = this.data();
@@ -97,79 +108,42 @@ export class DashboardPage implements OnInit {
     return Math.round((d.monthlyExpenses / d.monthlyIncome) * 1000) / 10;
   });
 
+  readonly healthLabel = computed(() => {
+    const rate = this.savingsRate();
+    if (rate === null) return 'Getting started';
+    if (rate >= 20) return 'Healthy runway';
+    if (rate >= 10) return 'Stable — room to improve';
+    return 'Needs attention';
+  });
+
+  readonly healthTone = computed(() => {
+    const rate = this.savingsRate();
+    if (rate === null) return 'neutral' as const;
+    if (rate >= 20) return 'success' as const;
+    if (rate >= 10) return 'warning' as const;
+    return 'danger' as const;
+  });
+
+  readonly topInsight = computed(() => this.data()?.insights?.[0] ?? null);
+
   readonly flowChart = computed<ChartData>(() => {
     const rows = this.data()?.chartData.incomeVsExpense ?? [];
-    const type = this.flowChartType();
-    const labels = rows.map((r) => r.label);
-    const income = rows.map((r) => r.income);
-    const expense = rows.map((r) => r.expense);
-
-    if (type === 'line') {
-      return {
-        labels,
-        datasets: [
-          {
-            label: 'Income',
-            data: income,
-            borderColor: '#00E599',
-            backgroundColor: 'rgba(0,229,153,0.12)',
-            fill: true,
-            tension: 0.35,
-            pointRadius: 3,
-            pointBackgroundColor: '#00E599',
-          },
-          {
-            label: 'Expense',
-            data: expense,
-            borderColor: '#9CA3AF',
-            backgroundColor: 'rgba(156,163,175,0.1)',
-            fill: true,
-            tension: 0.35,
-            pointRadius: 3,
-            pointBackgroundColor: '#9CA3AF',
-          },
-        ],
-      };
-    }
-
-    if (type === 'radar') {
-      return {
-        labels,
-        datasets: [
-          {
-            label: 'Income',
-            data: income,
-            borderColor: '#00E599',
-            backgroundColor: 'rgba(0,229,153,0.2)',
-            pointBackgroundColor: '#00E599',
-          },
-          {
-            label: 'Expense',
-            data: expense,
-            borderColor: '#9CA3AF',
-            backgroundColor: 'rgba(156,163,175,0.15)',
-            pointBackgroundColor: '#9CA3AF',
-          },
-        ],
-      };
-    }
-
     return {
-      labels,
+      labels: rows.map((r) => r.label),
       datasets: [
         {
           label: 'Income',
-          data: income,
+          data: rows.map((r) => r.income),
           backgroundColor: '#00E599',
           borderRadius: 8,
-          maxBarThickness: 42,
+          maxBarThickness: 36,
         },
         {
           label: 'Expense',
-          data: expense,
+          data: rows.map((r) => r.expense),
           backgroundColor: '#6B7280',
           borderRadius: 8,
-          maxBarThickness: 42,
+          maxBarThickness: 36,
         },
       ],
     };
@@ -177,94 +151,17 @@ export class DashboardPage implements OnInit {
 
   readonly categoryChart = computed<ChartData>(() => {
     const rows = this.data()?.chartData.categoryBreakdown ?? [];
-    const type = this.categoryChartType();
-    const labels = rows.map((r) => r.category);
-    const amounts = rows.map((r) => r.amount);
-    const colors = rows.map((_, i) => CATEGORY_PALETTE[i % CATEGORY_PALETTE.length]);
-
-    if (type === 'bar') {
-      return {
-        labels,
-        datasets: [
-          {
-            label: 'Spend',
-            data: amounts,
-            backgroundColor: colors,
-            borderRadius: 8,
-            maxBarThickness: 36,
-          },
-        ],
-      };
-    }
-
     return {
-      labels,
+      labels: rows.map((r) => r.category),
       datasets: [
         {
-          data: amounts,
-          backgroundColor: colors,
-          borderWidth: type === 'doughnut' || type === 'pie' ? 2 : 0,
-          borderColor: getComputedStyle(document.documentElement)
-            .getPropertyValue('--finora-surface')
-            .trim() || '#161616',
+          data: rows.map((r) => r.amount),
+          backgroundColor: rows.map((_, i) => CATEGORY_PALETTE[i % CATEGORY_PALETTE.length]),
+          borderWidth: 2,
+          borderColor:
+            getComputedStyle(document.documentElement).getPropertyValue('--finora-surface').trim() ||
+            '#161616',
           hoverOffset: 6,
-        },
-      ],
-    };
-  });
-
-  readonly trendChart = computed<ChartData>(() => {
-    const rows = this.data()?.chartData.incomeVsExpense ?? [];
-    const type = this.trendChartType();
-    const labels = rows.map((r) => r.label);
-    const net = rows.map((r) => r.income - r.expense);
-
-    if (type === 'doughnut') {
-      const positive = net.filter((n) => n >= 0).reduce((a, b) => a + b, 0);
-      const negative = Math.abs(net.filter((n) => n < 0).reduce((a, b) => a + b, 0));
-      return {
-        labels: ['Positive months', 'Deficit months'],
-        datasets: [
-          {
-            data: [positive, negative],
-            backgroundColor: ['#00E599', '#6B7280'],
-            borderWidth: 2,
-            borderColor:
-              getComputedStyle(document.documentElement)
-                .getPropertyValue('--finora-surface')
-                .trim() || '#161616',
-          },
-        ],
-      };
-    }
-
-    if (type === 'bar') {
-      return {
-        labels,
-        datasets: [
-          {
-            label: 'Net savings',
-            data: net,
-            backgroundColor: net.map((n) => (n >= 0 ? '#00E599' : '#6B7280')),
-            borderRadius: 8,
-            maxBarThickness: 40,
-          },
-        ],
-      };
-    }
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Net savings',
-          data: net,
-          borderColor: '#00E599',
-          backgroundColor: 'rgba(0,229,153,0.15)',
-          fill: true,
-          tension: 0.35,
-          pointRadius: 3,
-          pointBackgroundColor: '#00E599',
         },
       ],
     };
@@ -272,18 +169,6 @@ export class DashboardPage implements OnInit {
 
   ngOnInit(): void {
     this.load();
-  }
-
-  setFlowType(type: ChartType): void {
-    this.flowChartType.set(type);
-  }
-
-  setCategoryType(type: ChartType): void {
-    this.categoryChartType.set(type);
-  }
-
-  setTrendType(type: ChartType): void {
-    this.trendChartType.set(type);
   }
 
   load(): void {
@@ -299,6 +184,17 @@ export class DashboardPage implements OnInit {
         this.loading.set(false);
       },
     });
+  }
+
+  askFinora(prompt?: string): void {
+    const text = (prompt ?? this.askForm.controls.prompt.value).trim();
+    if (!text) return;
+    void this.router.navigate(['/ai'], { queryParams: { prompt: text } });
+  }
+
+  submitAsk(): void {
+    if (this.askForm.invalid) return;
+    this.askFinora();
   }
 
   severityTone(severity: InsightSeverity): 'info' | 'success' | 'warning' | 'danger' | 'neutral' {

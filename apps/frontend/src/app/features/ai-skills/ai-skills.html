@@ -1,0 +1,66 @@
+<div class="skills-page">
+  <div class="skills-carousel" role="list">
+    @for (skill of skills; track skill.id) {
+      <article class="skill-card" [attr.data-accent]="skill.accent" role="listitem">
+        <div class="skill-card-icon">{{ skill.icon }}</div>
+        <h3 class="skill-card-title">{{ skill.title }}</h3>
+        <p class="skill-card-desc">{{ skill.description }}</p>
+        <a
+          class="skill-card-cta"
+          [routerLink]="['/ai']"
+          [queryParams]="{ prompt: skill.prompt }"
+        >
+          + Create skill
+        </a>
+      </article>
+    }
+  </div>
+
+  <div class="skills-toolbar">
+    <div class="skills-tabs" role="tablist">
+      <button
+        type="button"
+        role="tab"
+        class="skills-tab"
+        [class.is-active]="tab() === 'all'"
+        (click)="setTab('all')"
+      >
+        All Skills
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="skills-tab"
+        [class.is-active]="tab() === 'enabled'"
+        (click)="setTab('enabled')"
+      >
+        Enabled
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="skills-tab"
+        [class.is-active]="tab() === 'mine'"
+        (click)="setTab('mine')"
+      >
+        Created by me
+      </button>
+      <button type="button" class="skills-tab skills-tab-add" title="Add view">+</button>
+    </div>
+    <div class="skills-toolbar-actions">
+      <button type="button" class="skills-tool-btn" title="Search">⌕</button>
+      <button type="button" class="skills-tool-btn" title="Filter">☰</button>
+      <button type="button" class="skills-tool-btn" title="View">▦</button>
+    </div>
+  </div>
+
+  <section class="skills-empty">
+    <div class="skills-empty-icon">⚡</div>
+    <h2 class="skills-empty-title">Skills teach Finora how you manage money</h2>
+    <p class="skills-empty-desc">
+      Turn a repetitive finance workflow into a skill Finora reuses — so you never re-explain your
+      budgeting style, triage rules, or savings habits again.
+    </p>
+    <a routerLink="/ai" class="skills-empty-cta">+ Create skill</a>
+  </section>
+</div>
